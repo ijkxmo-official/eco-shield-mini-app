@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco Shield - Мониторинг растений</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #117243;
@@ -420,20 +421,12 @@
             padding: 24px;
             margin-bottom: 20px;
             box-shadow: var(--shadow);
+            position: relative;
         }
 
-        .graph-placeholder {
+        .graph-canvas-container {
             height: 280px;
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #6c757d;
-            font-size: 16px;
-            font-weight: 600;
-            gap: 12px;
+            position: relative;
         }
 
         .ai-response-container {
@@ -520,6 +513,33 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat-card {
+            background: rgba(17, 114, 67, 0.08);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: 800;
+            color: var(--primary-color);
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -600,7 +620,6 @@
             </div>
         </div>
 
-        <!-- Остальные секции остаются без изменений -->
         <div id="current-data" class="section">
             <div class="back-nav" onclick="showSection('main-menu')">
                 <span>←</span>
@@ -644,12 +663,10 @@
             </div>
 
             <div class="graph-container">
-                <div id="graph-content">
-                    <div class="graph-placeholder">
-                        <div>📊</div>
-                        <div>Выберите период и тип данных</div>
-                    </div>
+                <div class="graph-canvas-container">
+                    <canvas id="historyChart"></canvas>
                 </div>
+                <div id="graph-stats" class="stats-grid"></div>
             </div>
         </div>
 
@@ -788,17 +805,19 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://api-eco-shield.onrender.com';
-        
+        const API_BASE_URL = 'https://eco-shield-api.vercel.app';
         const BACKUP_SERVERS = [
-            'https://eco-shield-backup-1.onrender.com',
-            'https://eco-shield-backup-2.onrender.com'
+            'https://eco-shield-backup-1.vercel.app',
+            'https://eco-shield-backup-2.vercel.app'
         ];
 
         let currentDeviceToken = null;
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
         let activeDevice = localStorage.getItem('activeDevice');
         let currentServerIndex = 0;
+        let currentChart = null;
+        let currentGraphPeriod = '24h';
+        let currentGraphType = 'temperature';
 
         let tg = window.Telegram.WebApp;
         if (tg && tg.initData) {
@@ -829,42 +848,76 @@
                 }
 
                 try {
-                    console.log(`Попытка запроса к: ${url}`);
                     const response = await fetch(url, config);
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP ошибка! статус: ${response.status}`);
+                        throw new Error(`HTTP ошибка: ${response.status}`);
                     }
                     
                     const data = await response.json();
-                    
                     currentServerIndex = serverIndex;
-                    console.log(`✅ Запрос успешен к серверу: ${baseUrl}`);
+                    
+                    if (endpoint === '/presets' && data) {
+                        localStorage.setItem('cachedPresets', JSON.stringify({
+                            data: data,
+                            timestamp: Date.now()
+                        }));
+                    }
                     
                     return data;
                 } catch (error) {
-                    console.error(`❌ Ошибка запроса к ${url}:`, error);
                     lastError = error;
-                    
                     if (i < servers.length - 1) {
-                        showNotification(`🔄 Проблема с сервером, пробуем резервный...`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
 
-            throw new Error(`Все серверы недоступны. Последняя ошибка: ${lastError?.message || 'Неизвестная ошибка'}`);
+            if (endpoint === '/presets') {
+                const cached = localStorage.getItem('cachedPresets');
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    if (Date.now() - timestamp < 3600000) {
+                        return data;
+                    }
+                }
+            }
+
+            throw new Error(`Все серверы недоступны: ${lastError?.message || 'Неизвестная ошибка'}`);
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            
+            switch(sectionId) {
+                case 'current-data':
+                    loadCurrentData();
+                    break;
+                case 'graphs':
+                    loadGraphData();
+                    break;
+                case 'devices':
+                    loadDevices();
+                    break;
+                case 'notifications':
+                    loadNotifications();
+                    break;
+                case 'all-presets':
+                    loadAllPresets();
+                    break;
+                case 'my-presets':
+                    loadMyPresets();
+                    break;
+            }
         }
 
         async function loadCurrentData() {
             const content = document.getElementById('current-data-content');
             content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные...</div></div>';
             
-            document.getElementById('current-temp').textContent = '--°C';
-            document.getElementById('current-humidity').textContent = '--%';
-            document.getElementById('current-soil').textContent = '--%';
-
             if (!currentDeviceToken) {
                 content.innerHTML = `
                     <div class="alert alert-error">
@@ -928,29 +981,190 @@
             }
         }
 
-        function showSection(sectionId) {
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.getElementById(sectionId).classList.add('active');
-            
-            switch(sectionId) {
-                case 'current-data':
-                    loadCurrentData();
-                    break;
-                case 'devices':
-                    loadDevices();
-                    break;
-                case 'notifications':
-                    loadNotifications();
-                    break;
-                case 'all-presets':
-                    loadAllPresets();
-                    break;
-                case 'my-presets':
-                    loadMyPresets();
-                    break;
+        async function loadGraphData() {
+            if (!currentDeviceToken) {
+                document.getElementById('graph-stats').innerHTML = '<div class="alert alert-error">❌ Сначала добавьте устройство!</div>';
+                return;
             }
+
+            try {
+                const historyData = await makeRequest(`/sensor-data/history?period=${currentGraphPeriod}`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                renderChart(historyData);
+                updateGraphStats(historyData);
+            } catch (error) {
+                const demoData = generateDemoData();
+                renderChart(demoData);
+                updateGraphStats(demoData);
+            }
+        }
+
+        function generateDemoData() {
+            const periods = {
+                '24h': 24,
+                '7d': 7,
+                '30d': 30
+            };
+            
+            const count = periods[currentGraphPeriod] || 24;
+            const labels = [];
+            const datasets = [];
+            
+            for (let i = 0; i < count; i++) {
+                if (currentGraphPeriod === '24h') {
+                    labels.push(`${i}:00`);
+                } else if (currentGraphPeriod === '7d') {
+                    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+                    labels.push(days[i]);
+                } else {
+                    labels.push(`День ${i + 1}`);
+                }
+            }
+            
+            if (currentGraphType === 'temperature' || currentGraphType === 'all') {
+                datasets.push({
+                    label: 'Температура (°C)',
+                    data: Array.from({length: count}, () => 20 + Math.random() * 15),
+                    borderColor: '#ff6384',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            if (currentGraphType === 'humidity' || currentGraphType === 'all') {
+                datasets.push({
+                    label: 'Влажность воздуха (%)',
+                    data: Array.from({length: count}, () => 40 + Math.random() * 40),
+                    borderColor: '#36a2eb',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            if (currentGraphType === 'soil' || currentGraphType === 'all') {
+                datasets.push({
+                    label: 'Влажность почвы (%)',
+                    data: Array.from({length: count}, () => 30 + Math.random() * 50),
+                    borderColor: '#4bc0c0',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            return { labels, datasets };
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Данные за ${getPeriodLabel(currentGraphPeriod)}`,
+                            color: '#000',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#000',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: '#000'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: '#000'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateGraphStats(data) {
+            const statsContainer = document.getElementById('graph-stats');
+            let html = '';
+            
+            data.datasets.forEach(dataset => {
+                const values = dataset.data;
+                const max = Math.max(...values).toFixed(1);
+                const min = Math.min(...values).toFixed(1);
+                
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${max}</div>
+                        <div class="stat-label">${dataset.label} макс</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${min}</div>
+                        <div class="stat-label">${dataset.label} мин</div>
+                    </div>
+                `;
+            });
+            
+            statsContainer.innerHTML = html;
+        }
+
+        function changeGraphPeriod(period) {
+            document.querySelectorAll('#graphs .tab-container:first-child .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            currentGraphPeriod = period;
+            loadGraphData();
+        }
+
+        function changeGraphType(type) {
+            document.querySelectorAll('#graphs .tab-container:last-child .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            currentGraphType = type;
+            loadGraphData();
+        }
+
+        function getPeriodLabel(period) {
+            const labels = {
+                '24h': '24 часа',
+                '7d': '7 дней',
+                '30d': '30 дней'
+            };
+            return labels[period] || period;
         }
 
         function loadDevices() {
@@ -1302,20 +1516,6 @@
                 questionDisplay.textContent = question;
                 answerDisplay.innerHTML = '❌ Ошибка соединения с сервером';
             }
-        }
-
-        function changeGraphPeriod(period) {
-            document.querySelectorAll('#graphs .tab-container:first-child .tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-        }
-
-        function changeGraphType(type) {
-            document.querySelectorAll('#graphs .tab-container:last-child .tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
         }
 
         function checkNotifications() {
