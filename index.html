@@ -934,9 +934,32 @@
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
         let activeDevice = localStorage.getItem('activeDevice');
 
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.MainButton.setText("Eco Shield").show();
+        let tg = null;
+        try {
+            tg = window.Telegram.WebApp;
+            if (tg) {
+                tg.expand();
+                tg.MainButton.setText("Eco Shield").show();
+            }
+        } catch (error) {
+            console.log("Telegram Web App not available");
+        }
+
+        async function checkServerAvailability() {
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors'
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Server not available:', error);
+                return false;
+            }
+        }
 
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
@@ -967,6 +990,12 @@
             const content = document.getElementById('current-data-content');
             content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные...</div></div>';
             
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                content.innerHTML = '<div class="alert alert-error">❌ Сервер недоступен. Проверьте подключение.</div>';
+                return;
+            }
+            
             if (!currentDeviceToken) {
                 content.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
                 return;
@@ -974,9 +1003,12 @@
 
             try {
                 const response = await fetch(`${API_URL}/sensor-data/current`, {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
-                    }
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -991,7 +1023,7 @@
                         <div class="status-cards">
                             <div class="status-card">
                                 <div class="status-value">${data.temperature || '--'}°C</div>
-                                <div class="status-label">ТЕМПература</div>
+                                <div class="status-label">ТЕМПЕРАТУРА</div>
                             </div>
                             <div class="status-card">
                                 <div class="status-value">${data.humidity || '--'}%</div>
@@ -1101,13 +1133,21 @@
                 return;
             }
 
+            // Проверяем доступность сервера
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                resultDiv.innerHTML = '<div class="alert alert-error">❌ Сервер недоступен. Проверьте подключение.</div>';
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_URL}/auth`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ product_code: code })
+                    body: JSON.stringify({ product_code: code }),
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1144,6 +1184,12 @@
             const list = document.getElementById('notifications-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем уведомления...</div></div>';
 
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сервер недоступен. Проверьте подключение.</div>';
+                return;
+            }
+
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
                 return;
@@ -1151,9 +1197,12 @@
 
             try {
                 const response = await fetch(`${API_URL}/notifications`, {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
-                    }
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1226,6 +1275,12 @@
             const list = document.getElementById('all-presets-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем пресеты...</div></div>';
 
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сервер недоступен. Проверьте подключение.</div>';
+                return;
+            }
+
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
                 return;
@@ -1233,9 +1288,12 @@
 
             try {
                 const response = await fetch(`${API_URL}/presets`, {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
-                    }
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1297,6 +1355,12 @@
             const list = document.getElementById('my-presets-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем ваши пресеты...</div></div>';
 
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сервер недоступен. Проверьте подключение.</div>';
+                return;
+            }
+
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
                 return;
@@ -1304,9 +1368,12 @@
 
             try {
                 const response = await fetch(`${API_URL}/user/presets`, {
+                    method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
-                    }
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1380,8 +1447,10 @@
                 const response = await fetch(`${API_URL}/presets/${presetId}/apply`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
-                    }
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1412,6 +1481,14 @@
                 return;
             }
 
+            const serverAvailable = await checkServerAvailability();
+            if (!serverAvailable) {
+                questionDisplay.textContent = question;
+                answerDisplay.innerHTML = '❌ Сервер недоступен. Проверьте подключение.';
+                responseDiv.classList.add('show');
+                return;
+            }
+
             answerDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><div>AI анализирует вопрос...</div></div>';
             responseDiv.classList.add('show');
 
@@ -1422,7 +1499,8 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${currentDeviceToken}`
                     },
-                    body: JSON.stringify({ prompt: question })
+                    body: JSON.stringify({ prompt: question }),
+                    mode: 'cors'
                 });
 
                 if (response.ok) {
@@ -1529,8 +1607,7 @@
                 currentDeviceToken = userDevices[activeDeviceName];
             }
             
-            loadCurrentData();
-            setInterval(loadCurrentData, 120000);
+            setInterval(loadCurrentData, 60000);
         });
 
         window.showSection = showSection;
