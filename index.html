@@ -805,10 +805,10 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://192.168.0.109:5000';
+        const API_BASE_URL = 'http://localhost:5000';
         const BACKUP_SERVERS = [
-            'https://eco-shield.github.io/eco-shield/4040',
-            'https://eco-shield-backup-2.vercel.app'
+            'http://192.168.0.109:5000',
+            'http://192.168.1.100:5000'
         ];
 
         let currentDeviceToken = null;
@@ -994,13 +994,66 @@
                     }
                 });
 
-                renderChart(historyData);
-                updateGraphStats(historyData);
+                const chartData = formatChartData(historyData, currentGraphType, currentGraphPeriod);
+                renderChart(chartData);
+                updateGraphStats(chartData);
             } catch (error) {
                 const demoData = generateDemoData();
                 renderChart(demoData);
                 updateGraphStats(demoData);
             }
+        }
+
+        function formatChartData(historyData, graphType, period) {
+            const labels = [];
+            const datasets = [];
+            
+            if (graphType === 'temperature' || graphType === 'all') {
+                const data = Object.entries(historyData.temperature || {}).map(([time, value]) => ({
+                    x: time,
+                    y: value
+                }));
+                datasets.push({
+                    label: 'Температура (°C)',
+                    data: data,
+                    borderColor: '#ff6384',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            if (graphType === 'humidity' || graphType === 'all') {
+                const data = Object.entries(historyData.humidity || {}).map(([time, value]) => ({
+                    x: time,
+                    y: value
+                }));
+                datasets.push({
+                    label: 'Влажность воздуха (%)',
+                    data: data,
+                    borderColor: '#36a2eb',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            if (graphType === 'soil' || graphType === 'all') {
+                const data = Object.entries(historyData.soil_moisture || {}).map(([time, value]) => ({
+                    x: time,
+                    y: value
+                }));
+                datasets.push({
+                    label: 'Влажность почвы (%)',
+                    data: data,
+                    borderColor: '#4bc0c0',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                });
+            }
+            
+            return { datasets };
         }
 
         function generateDemoData() {
@@ -1070,7 +1123,10 @@
             
             currentChart = new Chart(ctx, {
                 type: 'line',
-                data: data,
+                data: {
+                    labels: data.labels || [],
+                    datasets: data.datasets
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1121,9 +1177,10 @@
             let html = '';
             
             data.datasets.forEach(dataset => {
-                const values = dataset.data;
+                const values = dataset.data.map(point => point.y || point);
                 const max = Math.max(...values).toFixed(1);
                 const min = Math.min(...values).toFixed(1);
+                const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
                 
                 html += `
                     <div class="stat-card">
@@ -1253,6 +1310,9 @@
             try {
                 const data = await makeRequest('/auth', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({ product_code: code })
                 });
 
@@ -1363,7 +1423,7 @@
                     };
                     
                     html += `
-                        <div class="preset-item" onclick="applyPreset('${preset.id}')">
+                        <div class="preset-item" onclick="applyPreset(${preset.id})">
                             <div class="preset-header">
                                 <div>
                                     <div class="preset-name">${preset.name}</div>
@@ -1505,7 +1565,8 @@
                 const data = await makeRequest('/ai-request', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${currentDeviceToken}`
+                        'Authorization': `Bearer ${currentDeviceToken}`,
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ prompt: question })
                 });
@@ -1569,5 +1630,3 @@
     </script>
 </body>
 </html>
-
-
