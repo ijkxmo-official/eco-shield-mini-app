@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco Shield - Мониторинг растений</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --primary-color: #117243;
+            --secondary-color: #0d5a35;
+            --background-color: #292929;
+            --text-light: #ffffff;
+            --text-dark: #000000;
+            --card-bg: #ffffff;
+            --border-radius: 16px;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background-color) 0%, #1a1a1a 100%);
+            color: var(--text-light);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .app-container {
+            max-width: 100%;
+            padding: 16px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--border-radius);
+            padding: 24px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M0 0h40v40H0V0zm20 20h20v20H20V20zm0-20h20v20H20V0zM0 20h20v20H0V20z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .header p {
+            opacity: 0.95;
+            font-size: 16px;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .status-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px 16px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .status-label {
+            font-size: 13px;
+            color: var(--text-dark);
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .grid-menu {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .menu-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px 16px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-dark);
+            text-decoration: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .menu-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .menu-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            transition: var(--transition);
+        }
+
+        .menu-card:hover .menu-icon {
+            transform: scale(1.2);
+        }
+
+        .menu-text {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .menu-description {
+            font-size: 12px;
+            color: var(--text-dark);
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(17, 114, 67, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .back-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 12px 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-light);
+        }
+
+        .back-nav:hover {
+            color: var(--primary-color);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            color: var(--text-dark);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .device-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .device-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .device-icon {
+            font-size: 24px;
+        }
+
+        .device-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .device-name {
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 16px;
+        }
+
+        .device-status {
+            font-size: 13px;
+            color: var(--text-dark);
+            opacity: 0.7;
+        }
+
+        .device-active {
+            color: var(--primary-color);
+            font-weight: 800;
+        }
+
+        .device-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: rgba(17, 114, 67, 0.1);
+            border: none;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+        }
+
+        .icon-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .delete-btn {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .delete-btn:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 15px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(17, 114, 67, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .notification-item {
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--primary-color);
+            transition: var(--transition);
+        }
+
+        .notification-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .notification-title {
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+        }
+
+        .notification-status {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: var(--primary-color);
+            color: white;
+            font-weight: 700;
+        }
+
+        .notification-inactive {
+            background: #6c757d;
+        }
+
+        .notification-details {
+            font-size: 14px;
+            color: var(--text-dark);
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .preset-item {
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .preset-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .preset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .preset-name {
+            font-weight: 800;
+            color: var(--text-dark);
+            font-size: 17px;
+            margin-bottom: 6px;
+        }
+
+        .preset-category {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: var(--primary-color);
+            color: white;
+            font-weight: 700;
+        }
+
+        .preset-params {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .param-item {
+            text-align: center;
+            padding: 12px 8px;
+            background: rgba(17, 114, 67, 0.08);
+            border-radius: 10px;
+        }
+
+        .param-value {
+            font-weight: 800;
+            color: var(--primary-color);
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .param-label {
+            font-size: 11px;
+            color: var(--text-dark);
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 6px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: var(--transition);
+            font-weight: 700;
+            color: var(--text-dark);
+            font-size: 14px;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 12px rgba(17, 114, 67, 0.3);
+        }
+
+        .graph-container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .graph-placeholder {
+            height: 280px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 16px;
+            font-weight: 600;
+            gap: 12px;
+        }
+
+        .ai-response-container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-top: 20px;
+            box-shadow: var(--shadow);
+            color: var(--text-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .ai-response-container.show {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .ai-question {
+            background: linear-gradient(135deg, #e9f7ef, #d1f2e1);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .ai-answer {
+            line-height: 1.7;
+            font-size: 15px;
+            color: var(--text-dark);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dark);
+            opacity: 0.7;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+            font-weight: 600;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .alert-success {
+            background: #d1edff;
+            color: #0c5460;
+            border-left-color: var(--primary-color);
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 20px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(17, 114, 67, 0.2);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div id="main-menu" class="section active">
+            <div class="header">
+                <h1>🌿 Eco Shield</h1>
+                <p>Умный мониторинг микроклимата растений</p>
+            </div>
+
+            <div class="status-cards">
+                <div class="status-card">
+                    <div class="status-value" id="current-temp">--°C</div>
+                    <div class="status-label">ТЕМПЕРАТУРА</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-value" id="current-humidity">--%</div>
+                    <div class="status-label">ВЛАЖНОСТЬ</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-value" id="current-soil">--%</div>
+                    <div class="status-label">ВЛАЖНОСТЬ ПОЧВЫ</div>
+                </div>
+            </div>
+
+            <div class="grid-menu">
+                <div class="menu-card" onclick="showSection('current-data')">
+                    <div class="menu-icon">🌡️</div>
+                    <div class="menu-text">Текущие данные</div>
+                    <div class="menu-description">Актуальные показания</div>
+                </div>
+                <div class="menu-card" onclick="showSection('graphs')">
+                    <div class="menu-icon">📈</div>
+                    <div class="menu-text">Аналитика</div>
+                    <div class="menu-description">Графики и тренды</div>
+                </div>
+                <div class="menu-card" onclick="showSection('devices')">
+                    <div class="menu-icon">📱</div>
+                    <div class="menu-text">Устройства</div>
+                    <div class="menu-description">Управление датчиками</div>
+                </div>
+                <div class="menu-card" onclick="showSection('notifications')">
+                    <div class="menu-icon">🔔</div>
+                    <div class="menu-text">Уведомления</div>
+                    <div class="menu-description">Оповещения и алерты</div>
+                </div>
+                <div class="menu-card" onclick="showSection('all-presets')">
+                    <div class="menu-icon">🌿</div>
+                    <div class="menu-text">Пресеты растений</div>
+                    <div class="menu-description">Готовые настройки</div>
+                </div>
+                <div class="menu-card" onclick="showSection('my-presets')">
+                    <div class="menu-icon">⚙️</div>
+                    <div class="menu-text">Мои пресеты</div>
+                    <div class="menu-description">Активные конфигурации</div>
+                </div>
+                <div class="menu-card" onclick="showSection('ai-help')">
+                    <div class="menu-icon">🤖</div>
+                    <div class="menu-text">AI Помощник</div>
+                    <div class="menu-description">Советы по уходу</div>
+                </div>
+                <div class="menu-card" onclick="showSection('add-device')">
+                    <div class="menu-icon">➕</div>
+                    <div class="menu-text">Добавить устройство</div>
+                    <div class="menu-description">Подключить новый датчик</div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" onclick="checkNotifications()">
+                    <span>🔔</span>
+                    <span>Проверить</span>
+                </button>
+                <button class="btn btn-secondary" onclick="refreshData()">
+                    <span>🔄</span>
+                    <span>Обновить</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="current-data" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>🌡️ Текущие данные</h1>
+                <p>Актуальные показания с датчиков</p>
+            </div>
+            <div class="card">
+                <div id="current-data-content">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Загружаем данные...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="graphs" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>📈 Аналитика данных</h1>
+                <p>Графики и статистика за разные периоды</p>
+            </div>
+            
+            <div class="tab-container">
+                <div class="tab active" onclick="changeGraphPeriod('24h')">24 часа</div>
+                <div class="tab" onclick="changeGraphPeriod('7d')">7 дней</div>
+                <div class="tab" onclick="changeGraphPeriod('30d')">30 дней</div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tab active" onclick="changeGraphType('temperature')">🌡 Температура</div>
+                <div class="tab" onclick="changeGraphType('humidity')">💧 Влажность</div>
+                <div class="tab" onclick="changeGraphType('soil')">🌱 Почва</div>
+                <div class="tab" onclick="changeGraphType('all')">📊 Все данные</div>
+            </div>
+
+            <div class="graph-container">
+                <div id="graph-content">
+                    <div class="graph-placeholder">
+                        <div>📊</div>
+                        <div>Выберите период и тип данных</div>
+                        <div style="font-size: 14px; font-weight: normal;">График будет построен автоматически</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="devices" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>📱 Мои устройства</h1>
+                <p>Управление подключенными датчиками</p>
+            </div>
+            <div class="card">
+                <div id="devices-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Загружаем устройства...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="notifications" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>🔔 Уведомления</h1>
+                <p>Оповещения о состоянии растений</p>
+            </div>
+            <div class="card">
+                <div id="notifications-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Загружаем уведомления...</div>
+                    </div>
+                </div>
+                <button class="btn" onclick="checkNotifications()">
+                    <span>🔍</span>
+                    <span>Проверить уведомления</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="all-presets" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>🌿 Пресеты растений</h1>
+                <p>Готовые настройки для разных видов растений</p>
+            </div>
+            <div class="card">
+                <div id="all-presets-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Загружаем пресеты...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="my-presets" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>⚙️ Мои пресеты</h1>
+                <p>Активные конфигурации для ваших растений</p>
+            </div>
+            <div class="card">
+                <div id="my-presets-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Загружаем ваши пресеты...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="ai-help" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>🤖 AI Помощник</h1>
+                <p>Экспертные советы по уходу за растениями</p>
+            </div>
+            <div class="card">
+                <div class="form-group">
+                    <label class="form-label">Задайте вопрос о растениях:</label>
+                    <textarea class="form-input" id="ai-question" rows="4" placeholder="Например: Как правильно поливать орхидею зимой? Какая оптимальная температура для томатов?"></textarea>
+                </div>
+                <button class="btn" onclick="askAI()">
+                    <span>📤</span>
+                    <span>Получить совет</span>
+                </button>
+                
+                <div id="ai-response" class="ai-response-container">
+                    <div class="ai-question" id="ai-question-display"></div>
+                    <div class="ai-answer" id="ai-answer-display"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-device" class="section">
+            <div class="back-nav" onclick="showSection('main-menu')">
+                <span>←</span>
+                <span>Назад к меню</span>
+            </div>
+            <div class="header">
+                <h1>➕ Добавить устройство</h1>
+                <p>Подключите новый датчик к системе</p>
+            </div>
+            <div class="card">
+                <div class="form-group">
+                    <label class="form-label">Код устройства (12 символов):</label>
+                    <input type="text" class="form-input" id="device-code" maxlength="12" placeholder="Введите 12-значный код с устройства">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Название устройства:</label>
+                    <input type="text" class="form-input" id="device-name" placeholder="Например: Гостиная, Кухня, Офис">
+                </div>
+                <button class="btn" onclick="addDevice()">
+                    <span>✅</span>
+                    <span>Добавить устройство</span>
+                </button>
+                
+                <div id="add-device-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://192.168.0.109:5000";
+        let currentDeviceToken = null;
+        let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
+        let activeDevice = localStorage.getItem('activeDevice');
+
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.setText("Eco Shield").show();
+
+        const PLANT_KNOWLEDGE_BASE = {
+            "полив": {
+                "keywords": ["полив", "поливать", "вода", "увлажнение", "засуха", "перелив"],
+                "answers": [
+                    "💧 Полив растений:\n- Поливайте утром или вечером\n- Используйте отстоянную воду комнатной температуры\n- Избегайте перелива - это приводит к гниению корней\n- Давайте почве просохнуть между поливами",
+                    "💦 Режим полива:\nЛетом: 2-3 раза в неделю\nЗимой: 1 раз в 7-10 дней\nВсегда проверяйте влажность почвы перед поливом!"
+                ]
+            },
+            "освещение": {
+                "keywords": ["свет", "освещение", "солнце", "тень", "окно", "световой"],
+                "answers": [
+                    "☀️ Освещение для растений:\n- Большинство растений любят яркий рассеянный свет\n- Избегайте прямых солнечных лучей в полдень\n- Растения с темными листьями обычно более теневыносливы",
+                    "💡 Советы по освещению:\nЮжные окна: светолюбивые растения\nСеверные окна: теневыносливые виды\nВосточные/западные: универсальный вариант"
+                ]
+            },
+            "температура": {
+                "keywords": ["температура", "тепло", "холод", "мороз", "жара", "термо"],
+                "answers": [
+                    "🌡 Температурный режим:\n- Большинство комнатных растений предпочитают 18-25°C\n- Избегайте резких перепадов температуры\n- Защищайте от сквозняков и отопительных приборов",
+                    "❄️ Зимный период:\nНекоторые растения нуждаются в периоде покоя при 12-16°C\nНе ставьте растения близко к холодным окнам"
+                ]
+            },
+            "удобрение": {
+                "keywords": ["удобрение", "подкормка", "питание", "удобрять", "минералы"],
+                "answers": [
+                    "🌿 Удобрения для растений:\n- Используйте сбалансированные удобрения\n- Весна-лето: подкармливайте каждые 2 недели\n- Осень-зима: сократите подкормки до 1 раза в месяц",
+                    "🍃 Органические удобрения:\nКомпост, биогумус, зола\nНатуральные и безопасные для растений"
+                ]
+            },
+            "болезни": {
+                "keywords": ["болезнь", "вредители", "желтеют", "сохнут", "опадают", "пятна"],
+                "answers": [
+                    "🩺 Распространенные проблемы:\n- Желтеющие листья: перелив или нехватка питания\n- Сухие кончики: низкая влажность воздуха\n- Мелкие листья: недостаток света",
+                    "🐛 Вредители растений:\nПаутинный клещ: повысьте влажность\nТля: обработайте мыльным раствором\nЩитовка: удалите ваткой со спиртом"
+                ]
+            },
+            "пересадка": {
+                "keywords": ["пересадка", "горшок", "грунт", "пересадить", "корни"],
+                "answers": [
+                    "🔄 Пересадка растений:\n- Молодые растения пересаживайте ежегодно\n- Взрослые - раз в 2-3 года\n- Используйте горшок на 2-3 см больше предыдущего",
+                    "🌱 Почвенная смесь:\nУниверсальный грунт подходит большинству растений\nДля суккулентов добавьте песок\nДля орхидей - кору и мох"
+                ]
+            },
+            "размножение": {
+                "keywords": ["размножение", "черенок", "отросток", "семена", "размножить"],
+                "answers": [
+                    "🌱 Способы размножения:\n- Черенкование: самый популярный метод\n- Листовые черенки: для фиалок, бегоний\n- Воздушные отводки: для крупных растений",
+                    "✂️ Черенкование:\nБерите здоровые верхушечные черенки\nУкореняйте в воде или влажном грунте\nНакройте пакетом для создания влажности"
+                ]
+            }
+        };
+
+        const GENERAL_RESPONSES = [
+            "🌿 Для здоровья растений важно соблюдать баланс полива, освещения и температуры. Расскажите подробнее о вашей ситуации!",
+            "💚 Растения - живые организмы, требующие внимания и заботы. Обеспечьте им правильный уход, и они будут радовать вас долгие годы!",
+            "🌱 Каждое растение уникально. Наблюдайте за его состоянием и корректируйте уход в зависимости от реакции.",
+            "📚 Рекомендую почитать специализированную литературу или проконсультироваться в цветочном магазине для точных рекомендаций."
+        ];
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            
+            switch(sectionId) {
+                case 'current-data':
+                    loadCurrentData();
+                    break;
+                case 'devices':
+                    loadDevices();
+                    break;
+                case 'notifications':
+                    loadNotifications();
+                    break;
+                case 'all-presets':
+                    loadAllPresets();
+                    break;
+                case 'my-presets':
+                    loadMyPresets();
+                    break;
+            }
+        }
+
+        async function loadCurrentData() {
+            const content = document.getElementById('current-data-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные...</div></div>';
+            
+            if (!currentDeviceToken) {
+                content.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/sensor-data/current`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const activeDevice = localStorage.getItem('activeDevice');
+                    
+                    content.innerHTML = `
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <div style="font-size: 14px; color: #666; margin-bottom: 8px;">АКТИВНОЕ УСТРОЙСТВО</div>
+                            <div style="font-size: 20px; font-weight: 800; color: var(--primary-color);">${activeDevice}</div>
+                        </div>
+                        <div class="status-cards">
+                            <div class="status-card">
+                                <div class="status-value">${data.temperature || '--'}°C</div>
+                                <div class="status-label">ТЕМПЕРАТУРА</div>
+                            </div>
+                            <div class="status-card">
+                                <div class="status-value">${data.humidity || '--'}%</div>
+                                <div class="status-label">ВЛАЖНОСТЬ ВОЗДУХА</div>
+                            </div>
+                            <div class="status-card">
+                                <div class="status-value">${data.soil_moisture || '--'}%</div>
+                                <div class="status-label">ВЛАЖНОСТЬ ПОЧВЫ</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px; font-weight: 600;">
+                            📅 Обновлено: ${new Date().toLocaleTimeString()}
+                        </div>
+                    `;
+                    
+                    document.getElementById('current-temp').textContent = `${data.temperature || '--'}°C`;
+                    document.getElementById('current-humidity').textContent = `${data.humidity || '--'}%`;
+                    document.getElementById('current-soil').textContent = `${data.soil_moisture || '--'}%`;
+                } else {
+                    content.innerHTML = '<div class="alert alert-error">❌ Ошибка загрузки данных с устройства</div>';
+                }
+            } catch (error) {
+                console.error('Error loading current data:', error);
+                content.innerHTML = '<div class="alert alert-error">❌ Ошибка соединения с сервером</div>';
+            }
+        }
+
+        function loadDevices() {
+            const list = document.getElementById('devices-list');
+            const devices = JSON.parse(localStorage.getItem('userDevices') || '{}');
+            const activeDevice = localStorage.getItem('activeDevice');
+
+            if (Object.keys(devices).length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📱</div>
+                        <div>У вас пока нет добавленных устройств</div>
+                        <div style="font-size: 14px; margin-top: 8px;">Добавьте первое устройство для начала работы</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="device-list">';
+            for (const [name, token] of Object.entries(devices)) {
+                const isActive = name === activeDevice;
+                html += `
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-icon">${isActive ? '✅' : '📱'}</div>
+                            <div class="device-details">
+                                <div class="device-name ${isActive ? 'device-active' : ''}">${name}</div>
+                                <div class="device-status">${isActive ? 'Активное устройство' : 'Неактивно'}</div>
+                            </div>
+                        </div>
+                        <div class="device-actions">
+                            ${!isActive ? `<button class="icon-btn" onclick="setActiveDevice('${name}')" title="Сделать активным">✅</button>` : ''}
+                            <button class="icon-btn delete-btn" onclick="deleteDevice('${name}')" title="Удалить устройство">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            list.innerHTML = html;
+        }
+
+        function setActiveDevice(deviceName) {
+            localStorage.setItem('activeDevice', deviceName);
+            currentDeviceToken = userDevices[deviceName];
+            loadDevices();
+            showNotification(`✅ Активное устройство: ${deviceName}`);
+            loadCurrentData();
+        }
+
+        function deleteDevice(deviceName) {
+            if (confirm(`Вы уверены, что хотите удалить устройство "${deviceName}"?`)) {
+                delete userDevices[deviceName];
+                localStorage.setItem('userDevices', JSON.stringify(userDevices));
+                
+                if (localStorage.getItem('activeDevice') === deviceName) {
+                    const remainingDevices = Object.keys(userDevices);
+                    if (remainingDevices.length > 0) {
+                        setActiveDevice(remainingDevices[0]);
+                    } else {
+                        localStorage.removeItem('activeDevice');
+                        currentDeviceToken = null;
+                    }
+                }
+                
+                loadDevices();
+                showNotification(`🗑️ Устройство "${deviceName}" удалено`);
+            }
+        }
+
+        async function addDevice() {
+            const code = document.getElementById('device-code').value.trim();
+            const name = document.getElementById('device-name').value.trim();
+            const resultDiv = document.getElementById('add-device-result');
+
+            if (code.length !== 12) {
+                resultDiv.innerHTML = '<div class="alert alert-error">❌ Код должен содержать 12 символов!</div>';
+                return;
+            }
+
+            if (!name) {
+                resultDiv.innerHTML = '<div class="alert alert-error">❌ Введите название устройства!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ product_code: code })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const token = data.access_token;
+
+                    userDevices[name] = token;
+                    localStorage.setItem('userDevices', JSON.stringify(userDevices));
+                    
+                    if (!localStorage.getItem('activeDevice')) {
+                        setActiveDevice(name);
+                    }
+
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Устройство "${name}" успешно добавлено!<br>
+                            <small>Код устройства: ${code}</small>
+                        </div>
+                    `;
+
+                    document.getElementById('device-code').value = '';
+                    document.getElementById('device-name').value = '';
+
+                    setTimeout(() => showSection('main-menu'), 2000);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-error">❌ Неверный код устройства!</div>';
+                }
+            } catch (error) {
+                console.error('Error adding device:', error);
+                resultDiv.innerHTML = '<div class="alert alert-error">❌ Ошибка соединения с сервером</div>';
+            }
+        }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notifications-list');
+            list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем уведомления...</div></div>';
+
+            if (!currentDeviceToken) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/notifications`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const notifications = await response.json();
+                    
+                    if (!notifications || notifications.length === 0) {
+                        list.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-icon">🔔</div>
+                                <div>У вас пока нет уведомлений</div>
+                                <div style="font-size: 14px; margin-top: 8px;">Уведомления автоматически создаются при применении пресета</div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = '';
+                    notifications.forEach(notify => {
+                        const typeName = {
+                            "temperature": "🌡 Температура",
+                            "humidity": "💧 Влажность воздуха",
+                            "soil_moisture": "🌱 Влажность почвы"
+                        }[notify.notification_type] || notify.notification_type;
+                        
+                        const bounds = [];
+                        if (notify.min_value !== null) bounds.push(`мин: ${notify.min_value}`);
+                        if (notify.max_value !== null) bounds.push(`макс: ${notify.max_value}`);
+                        
+                        html += `
+                            <div class="notification-item">
+                                <div class="notification-header">
+                                    <div class="notification-title">
+                                        ${typeName}
+                                    </div>
+                                    <div class="notification-status ${notify.is_active ? '' : 'notification-inactive'}">
+                                        ${notify.is_active ? 'АКТИВНО' : 'НЕАКТИВНО'}
+                                    </div>
+                                </div>
+                                <div class="notification-details">
+                                    ${bounds.join(' • ')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    list.innerHTML = html;
+                } else {
+                    list.innerHTML = '<div class="alert alert-error">❌ Ошибка загрузки уведомлений</div>';
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                list.innerHTML = '<div class="alert alert-error">❌ Ошибка загрузки уведомлений</div>';
+            }
+        }
+
+        async function checkNotifications() {
+            if (!currentDeviceToken) {
+                showNotification('❌ Сначала добавьте устройство!');
+                return;
+            }
+
+            showNotification('🔔 Проверяем уведомления...');
+            setTimeout(() => {
+                showNotification('✅ Проверка уведомлений завершена!');
+                loadNotifications();
+            }, 1500);
+        }
+
+        async function loadAllPresets() {
+            const list = document.getElementById('all-presets-list');
+            list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем пресеты...</div></div>';
+
+            if (!currentDeviceToken) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/presets`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const presets = await response.json();
+                    
+                    if (!presets || presets.length === 0) {
+                        list.innerHTML = '<div class="empty-state"><div class="empty-icon">🌿</div><div>Пресеты временно недоступны</div></div>';
+                        return;
+                    }
+
+                    let html = '<div class="preset-grid">';
+                    presets.forEach(preset => {
+                        const categoryIcons = {
+                            "flower": "🌸",
+                            "vegetable": "🍅", 
+                            "herb": "🌿",
+                            "fruit": "🍓",
+                            "succulent": "🌵"
+                        };
+                        
+                        html += `
+                            <div class="preset-item" onclick="applyPreset('${preset.id}')">
+                                <div class="preset-header">
+                                    <div>
+                                        <div class="preset-name">${preset.name}</div>
+                                    </div>
+                                    <div class="preset-category">${categoryIcons[preset.category] || '🌱'} ${preset.category}</div>
+                                </div>
+                                <div class="preset-params">
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.temp_min}°-${preset.temp_max}°</div>
+                                        <div class="param-label">Температура</div>
+                                    </div>
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.hum_min}%-${preset.hum_max}%</div>
+                                        <div class="param-label">Влажность</div>
+                                    </div>
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.soil_min}%-${preset.soil_max}%</div>
+                                        <div class="param-label">Почва</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    
+                    list.innerHTML = html;
+                } else {
+                    list.innerHTML = '<div class="alert alert-error">❌ Пресеты временно недоступны</div>';
+                }
+            } catch (error) {
+                console.error('Error loading presets:', error);
+                list.innerHTML = '<div class="alert alert-error">❌ Ошибка загрузки пресетов</div>';
+            }
+        }
+
+        async function loadMyPresets() {
+            const list = document.getElementById('my-presets-list');
+            list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем ваши пресеты...</div></div>';
+
+            if (!currentDeviceToken) {
+                list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/user/presets`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const presets = await response.json();
+                    
+                    if (!presets || presets.length === 0) {
+                        list.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-icon">⚙️</div>
+                                <div>У вас пока нет примененных пресетов</div>
+                                <div style="font-size: 14px; margin-top: 8px;">Примените пресет из раздела "Пресеты растений"</div>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = '<div class="preset-grid">';
+                    presets.forEach(preset => {
+                        const categoryIcons = {
+                            "flower": "🌸",
+                            "vegetable": "🍅",
+                            "herb": "🌿", 
+                            "fruit": "🍓",
+                            "succulent": "🌵"
+                        };
+                        
+                        html += `
+                            <div class="preset-item">
+                                <div class="preset-header">
+                                    <div>
+                                        <div class="preset-name">${preset.name}</div>
+                                    </div>
+                                    <div class="preset-category">${categoryIcons[preset.category] || '🌱'} ${preset.category}</div>
+                                </div>
+                                <div class="preset-params">
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.temp_min}°-${preset.temp_max}°</div>
+                                        <div class="param-label">Температура</div>
+                                    </div>
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.hum_min}%-${preset.hum_max}%</div>
+                                        <div class="param-label">Влажность</div>
+                                    </div>
+                                    <div class="param-item">
+                                        <div class="param-value">${preset.soil_min}%-${preset.soil_max}%</div>
+                                        <div class="param-label">Почва</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    
+                    list.innerHTML = html;
+                } else {
+                    list.innerHTML = '<div class="alert alert-error">❌ Ваши пресеты временно недоступны</div>';
+                }
+            } catch (error) {
+                console.error('Error loading my presets:', error);
+                list.innerHTML = '<div class="alert alert-error">❌ Ошибка загрузки ваших пресетов</div>';
+            }
+        }
+
+        async function applyPreset(presetId) {
+            if (!currentDeviceToken) {
+                showNotification('❌ Сначала добавьте устройство!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/presets/${presetId}/apply`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    showNotification('✅ Пресет применен! Уведомления настроены автоматически.');
+                    loadMyPresets();
+                } else {
+                    showNotification('❌ Ошибка применения пресета');
+                }
+            } catch (error) {
+                console.error('Error applying preset:', error);
+                showNotification('❌ Ошибка применения пресета');
+            }
+        }
+
+        function generateAIResponse(question) {
+            const questionLower = question.toLowerCase();
+            const matchedTopics = [];
+            
+            for (const [topic, data] of Object.entries(PLANT_KNOWLEDGE_BASE)) {
+                for (const keyword of data.keywords) {
+                    if (questionLower.includes(keyword)) {
+                        matchedTopics.push(topic);
+                        break;
+                    }
+                }
+            }
+            
+            if (matchedTopics.length > 0) {
+                const responses = [];
+                for (const topic of matchedTopics.slice(0, 2)) {
+                    responses.push(...PLANT_KNOWLEDGE_BASE[topic].answers);
+                }
+                
+                if (responses.length < 2) {
+                    responses.push(GENERAL_RESPONSES[Math.floor(Math.random() * GENERAL_RESPONSES.length)]);
+                }
+                
+                return responses.slice(0, 3).join('\n\n');
+            }
+            
+            return GENERAL_RESPONSES[Math.floor(Math.random() * GENERAL_RESPONSES.length)];
+        }
+
+        function askAI() {
+            const question = document.getElementById('ai-question').value.trim();
+            const responseDiv = document.getElementById('ai-response');
+            const questionDisplay = document.getElementById('ai-question-display');
+            const answerDisplay = document.getElementById('ai-answer-display');
+
+            if (!question) {
+                showNotification('❌ Введите вопрос!');
+                return;
+            }
+
+            answerDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><div>AI анализирует вопрос...</div></div>';
+            responseDiv.classList.add('show');
+
+            setTimeout(() => {
+                const response = generateAIResponse(question);
+                questionDisplay.textContent = question;
+                answerDisplay.innerHTML = response.replace(/\n/g, '<br>');
+            }, 2000);
+        }
+
+        function changeGraphPeriod(period) {
+            document.querySelectorAll('#graphs .tab-container:first-child .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateGraphDisplay(period, getCurrentGraphType());
+        }
+
+        function changeGraphType(type) {
+            document.querySelectorAll('#graphs .tab-container:last-child .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateGraphDisplay(getCurrentGraphPeriod(), type);
+        }
+
+        function getCurrentGraphPeriod() {
+            const activeTab = document.querySelector('#graphs .tab-container:first-child .tab.active');
+            return activeTab.textContent.includes('24') ? '24h' : 
+                   activeTab.textContent.includes('7') ? '7d' : '30d';
+        }
+
+        function getCurrentGraphType() {
+            const activeTab = document.querySelector('#graphs .tab-container:last-child .tab.active');
+            if (activeTab.textContent.includes('Температура')) return 'temperature';
+            if (activeTab.textContent.includes('Влажность')) return 'humidity';
+            if (activeTab.textContent.includes('Почва')) return 'soil';
+            return 'all';
+        }
+
+        function updateGraphDisplay(period, type) {
+            const graphContent = document.getElementById('graph-content');
+            
+            if (!currentDeviceToken) {
+                graphContent.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте устройство!</div>';
+                return;
+            }
+
+            graphContent.innerHTML = `
+                <div class="graph-placeholder">
+                    <div>📊</div>
+                    <div>График ${getGraphTypeName(type)} за ${getPeriodName(period)}</div>
+                    <div style="font-size: 14px; font-weight: normal;">В реальном приложении здесь отображались бы данные с датчиков</div>
+                </div>
+            `;
+        }
+
+        function getGraphTypeName(type) {
+            const names = {
+                'temperature': 'температуры',
+                'humidity': 'влажности воздуха', 
+                'soil': 'влажности почвы',
+                'all': 'всех показателей'
+            };
+            return names[type] || type;
+        }
+
+        function getPeriodName(period) {
+            const names = {
+                '24h': '24 часа',
+                '7d': '7 дней',
+                '30d': '30 дней'
+            };
+            return names[period] || period;
+        }
+
+        function showNotification(message) {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showPopup({
+                    title: 'Eco Shield',
+                    message: message,
+                    buttons: [{ type: 'ok' }]
+                });
+            } else {
+                alert(message);
+            }
+        }
+
+        function refreshData() {
+            loadCurrentData();
+            showNotification('✅ Данные обновлены');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const activeDeviceName = localStorage.getItem('activeDevice');
+            if (activeDeviceName && userDevices[activeDeviceName]) {
+                currentDeviceToken = userDevices[activeDeviceName];
+            }
+            
+            loadCurrentData();
+            setInterval(loadCurrentData, 120000);
+        });
+    </script>
+</body>
+</html>
