@@ -886,7 +886,7 @@
             <div class="card">
                 <div class="form-group">
                     <label class="form-label">Задайте вопрос о растениях:</label>
-                    <textarea class="form-input" id="ai-question" rows="4" placeholder="Например: Как правильно поливать орхидею зимой? Какая оптимальная температура для томатов?"></textarea>
+                    <textarea class="form-input" id="ai-question" rows="4" placeholder="Например: Как правильно поливать орхидею зимой? Какая оптимальная температура для томатов? Почему желтеют листья у розы?"></textarea>
                 </div>
                 <button class="btn" onclick="askAI()">
                     <span>📤</span>
@@ -929,73 +929,27 @@
     </div>
 
     <script>
-        const API_URL = "http://192.168.0.109:5000";
+        // Автоматическое определение URL API
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? "http://localhost:5000" 
+            : "https://your-server-domain.com";
+        
+        console.log("API URL:", API_URL);
+        
         let currentDeviceToken = null;
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
         let activeDevice = localStorage.getItem('activeDevice');
 
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.MainButton.setText("Eco Shield").show();
-
-        const PLANT_KNOWLEDGE_BASE = {
-            "полив": {
-                "keywords": ["полив", "поливать", "вода", "увлажнение", "засуха", "перелив"],
-                "answers": [
-                    "💧 Полив растений:\n- Поливайте утром или вечером\n- Используйте отстоянную воду комнатной температуры\n- Избегайте перелива - это приводит к гниению корней\n- Давайте почве просохнуть между поливами",
-                    "💦 Режим полива:\nЛетом: 2-3 раза в неделю\nЗимой: 1 раз в 7-10 дней\nВсегда проверяйте влажность почвы перед поливом!"
-                ]
-            },
-            "освещение": {
-                "keywords": ["свет", "освещение", "солнце", "тень", "окно", "световой"],
-                "answers": [
-                    "☀️ Освещение для растений:\n- Большинство растений любят яркий рассеянный свет\n- Избегайте прямых солнечных лучей в полдень\n- Растения с темными листьями обычно более теневыносливы",
-                    "💡 Советы по освещению:\nЮжные окна: светолюбивые растения\nСеверные окна: теневыносливые виды\nВосточные/западные: универсальный вариант"
-                ]
-            },
-            "температура": {
-                "keywords": ["температура", "тепло", "холод", "мороз", "жара", "термо"],
-                "answers": [
-                    "🌡 Температурный режим:\n- Большинство комнатных растений предпочитают 18-25°C\n- Избегайте резких перепадов температуры\n- Защищайте от сквозняков и отопительных приборов",
-                    "❄️ Зимный период:\nНекоторые растения нуждаются в периоде покоя при 12-16°C\nНе ставьте растения близко к холодным окнам"
-                ]
-            },
-            "удобрение": {
-                "keywords": ["удобрение", "подкормка", "питание", "удобрять", "минералы"],
-                "answers": [
-                    "🌿 Удобрения для растений:\n- Используйте сбалансированные удобрения\n- Весна-лето: подкармливайте каждые 2 недели\n- Осень-зима: сократите подкормки до 1 раза в месяц",
-                    "🍃 Органические удобрения:\nКомпост, биогумус, зола\nНатуральные и безопасные для растений"
-                ]
-            },
-            "болезни": {
-                "keywords": ["болезнь", "вредители", "желтеют", "сохнут", "опадают", "пятна"],
-                "answers": [
-                    "🩺 Распространенные проблемы:\n- Желтеющие листья: перелив или нехватка питания\n- Сухие кончики: низкая влажность воздуха\n- Мелкие листья: недостаток света",
-                    "🐛 Вредители растений:\nПаутинный клещ: повысьте влажность\nТля: обработайте мыльным раствором\nЩитовка: удалите ваткой со спиртом"
-                ]
-            },
-            "пересадка": {
-                "keywords": ["пересадка", "горшок", "грунт", "пересадить", "корни"],
-                "answers": [
-                    "🔄 Пересадка растений:\n- Молодые растения пересаживайте ежегодно\n- Взрослые - раз в 2-3 года\n- Используйте горшок на 2-3 см больше предыдущего",
-                    "🌱 Почвенная смесь:\nУниверсальный грунт подходит большинству растений\nДля суккулентов добавьте песок\nДля орхидей - кору и мох"
-                ]
-            },
-            "размножение": {
-                "keywords": ["размножение", "черенок", "отросток", "семена", "размножить"],
-                "answers": [
-                    "🌱 Способы размножения:\n- Черенкование: самый популярный метод\n- Листовые черенки: для фиалок, бегоний\n- Воздушные отводки: для крупных растений",
-                    "✂️ Черенкование:\nБерите здоровые верхушечные черенки\nУкореняйте в воде или влажном грунте\nНакройте пакетом для создания влажности"
-                ]
+        let tg = null;
+        try {
+            tg = window.Telegram.WebApp;
+            if (tg) {
+                tg.expand();
+                tg.MainButton.setText("Eco Shield").show();
             }
-        };
-
-        const GENERAL_RESPONSES = [
-            "🌿 Для здоровья растений важно соблюдать баланс полива, освещения и температуры. Расскажите подробнее о вашей ситуации!",
-            "💚 Растения - живые организмы, требующие внимания и заботы. Обеспечьте им правильный уход, и они будут радовать вас долгие годы!",
-            "🌱 Каждое растение уникально. Наблюдайте за его состоянием и корректируйте уход в зависимости от реакции.",
-            "📚 Рекомендую почитать специализированную литературу или проконсультироваться в цветочном магазине для точных рекомендаций."
-        ];
+        } catch (error) {
+            console.log("Telegram Web App not available");
+        }
 
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
@@ -1027,7 +981,14 @@
             content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные...</div></div>';
             
             if (!currentDeviceToken) {
-                content.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                content.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Сначала добавьте и выберите устройство!
+                        <div style="margin-top: 10px; font-size: 14px; font-weight: normal;">
+                            Перейдите в раздел "Добавить устройство" и используйте тестовый код: <strong>TEST12345678</strong>
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
@@ -1074,7 +1035,14 @@
                 }
             } catch (error) {
                 console.error('Error loading current data:', error);
-                content.innerHTML = '<div class="alert alert-error">❌ Ошибка соединения с сервером</div>';
+                content.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Ошибка соединения с сервером
+                        <div style="margin-top: 10px; font-size: 14px; font-weight: normal;">
+                            Проверьте подключение к интернету и убедитесь, что сервер запущен
+                        </div>
+                    </div>
+                `;
             }
         }
 
@@ -1088,7 +1056,10 @@
                     <div class="empty-state">
                         <div class="empty-icon">📱</div>
                         <div>У вас пока нет добавленных устройств</div>
-                        <div style="font-size: 14px; margin-top: 8px;">Добавьте первое устройство для начала работы</div>
+                        <div style="font-size: 14px; margin-top: 8px;">
+                            Добавьте первое устройство для начала работы<br>
+                            <strong>Тестовый код: TEST12345678</strong>
+                        </div>
                     </div>
                 `;
                 return;
@@ -1192,11 +1163,25 @@
 
                     setTimeout(() => showSection('main-menu'), 2000);
                 } else {
-                    resultDiv.innerHTML = '<div class="alert alert-error">❌ Неверный код устройства!</div>';
+                    const errorData = await response.json();
+                    resultDiv.innerHTML = `<div class="alert alert-error">❌ Ошибка: ${errorData.detail || 'Неверный код устройства!'}</div>`;
                 }
             } catch (error) {
                 console.error('Error adding device:', error);
-                resultDiv.innerHTML = '<div class="alert alert-error">❌ Ошибка соединения с сервером</div>';
+                resultDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Ошибка соединения с сервером
+                        <div style="margin-top: 10px; font-size: 14px; font-weight: normal;">
+                            Проверьте: 
+                            <ul style="text-align: left; margin: 10px 0;">
+                                <li>Подключение к интернету</li>
+                                <li>Запущен ли сервер</li>
+                                <li>Правильность URL API: ${API_URL}</li>
+                            </ul>
+                            <strong>Тестовый код для проверки: TEST12345678</strong>
+                        </div>
+                    </div>
+                `;
             }
         }
 
@@ -1456,36 +1441,7 @@
             }
         }
 
-        function generateAIResponse(question) {
-            const questionLower = question.toLowerCase();
-            const matchedTopics = [];
-            
-            for (const [topic, data] of Object.entries(PLANT_KNOWLEDGE_BASE)) {
-                for (const keyword of data.keywords) {
-                    if (questionLower.includes(keyword)) {
-                        matchedTopics.push(topic);
-                        break;
-                    }
-                }
-            }
-            
-            if (matchedTopics.length > 0) {
-                const responses = [];
-                for (const topic of matchedTopics.slice(0, 2)) {
-                    responses.push(...PLANT_KNOWLEDGE_BASE[topic].answers);
-                }
-                
-                if (responses.length < 2) {
-                    responses.push(GENERAL_RESPONSES[Math.floor(Math.random() * GENERAL_RESPONSES.length)]);
-                }
-                
-                return responses.slice(0, 3).join('\n\n');
-            }
-            
-            return GENERAL_RESPONSES[Math.floor(Math.random() * GENERAL_RESPONSES.length)];
-        }
-
-        function askAI() {
+        async function askAI() {
             const question = document.getElementById('ai-question').value.trim();
             const responseDiv = document.getElementById('ai-response');
             const questionDisplay = document.getElementById('ai-question-display');
@@ -1496,14 +1452,37 @@
                 return;
             }
 
+            if (!currentDeviceToken) {
+                showNotification('❌ Сначала добавьте устройство!');
+                return;
+            }
+
             answerDisplay.innerHTML = '<div class="loading"><div class="spinner"></div><div>AI анализирует вопрос...</div></div>';
             responseDiv.classList.add('show');
 
-            setTimeout(() => {
-                const response = generateAIResponse(question);
+            try {
+                const response = await fetch(`${API_URL}/ai-request`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentDeviceToken}`
+                    },
+                    body: JSON.stringify({ prompt: question })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    questionDisplay.textContent = question;
+                    answerDisplay.innerHTML = data.response.replace(/\n/g, '<br>');
+                } else {
+                    questionDisplay.textContent = question;
+                    answerDisplay.innerHTML = '❌ Извините, произошла ошибка при обработке запроса. Попробуйте позже.';
+                }
+            } catch (error) {
+                console.error('Error asking AI:', error);
                 questionDisplay.textContent = question;
-                answerDisplay.innerHTML = response.replace(/\n/g, '<br>');
-            }, 2000);
+                answerDisplay.innerHTML = '❌ Ошибка соединения с сервером. Проверьте подключение к интернету.';
+            }
         }
 
         function changeGraphPeriod(period) {
@@ -1593,11 +1572,28 @@
             const activeDeviceName = localStorage.getItem('activeDevice');
             if (activeDeviceName && userDevices[activeDeviceName]) {
                 currentDeviceToken = userDevices[activeDeviceName];
+                loadCurrentData();
             }
             
-            loadCurrentData();
             setInterval(loadCurrentData, 120000);
+            
+            if (Object.keys(userDevices).length === 0) {
+                setTimeout(() => {
+                    showNotification('💡 Для начала работы добавьте устройство с кодом TEST12345678');
+                }, 3000);
+            }
         });
+
+        window.showSection = showSection;
+        window.checkNotifications = checkNotifications;
+        window.refreshData = refreshData;
+        window.addDevice = addDevice;
+        window.setActiveDevice = setActiveDevice;
+        window.deleteDevice = deleteDevice;
+        window.applyPreset = applyPreset;
+        window.askAI = askAI;
+        window.changeGraphPeriod = changeGraphPeriod;
+        window.changeGraphType = changeGraphType;
     </script>
 </body>
 </html>
