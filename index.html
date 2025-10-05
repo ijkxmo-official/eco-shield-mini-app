@@ -805,10 +805,9 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'http://localhost:5000';
-        const BACKUP_SERVERS = [
-            'http://192.168.0.109:5000',
-            'http://192.168.1.100:5000'
+        const SERVERS = [
+            'https://your-production-server.com',
+            'https://backup-server.com'
         ];
 
         let currentDeviceToken = null;
@@ -826,12 +825,9 @@
         }
 
         async function makeRequest(endpoint, options = {}) {
-            const servers = [API_BASE_URL, ...BACKUP_SERVERS];
-            let lastError = null;
-
-            for (let i = 0; i < servers.length; i++) {
-                const serverIndex = (currentServerIndex + i) % servers.length;
-                const baseUrl = servers[serverIndex];
+            for (let i = 0; i < SERVERS.length; i++) {
+                const serverIndex = (currentServerIndex + i) % SERVERS.length;
+                const baseUrl = SERVERS[serverIndex];
                 const url = `${baseUrl}${endpoint}`;
                 
                 const config = {
@@ -848,10 +844,11 @@
                 }
 
                 try {
+                    console.log(`Trying to fetch from: ${url}`);
                     const response = await fetch(url, config);
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP ошибка: ${response.status}`);
+                        throw new Error(`HTTP error: ${response.status}`);
                     }
                     
                     const data = await response.json();
@@ -866,9 +863,9 @@
                     
                     return data;
                 } catch (error) {
-                    lastError = error;
-                    if (i < servers.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                    console.error(`Error fetching from ${url}:`, error);
+                    if (i < SERVERS.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
             }
@@ -883,7 +880,7 @@
                 }
             }
 
-            throw new Error(`Все серверы недоступны: ${lastError?.message || 'Неизвестная ошибка'}`);
+            throw new Error('All servers are unavailable');
         }
 
         function showSection(sectionId) {
@@ -1180,7 +1177,6 @@
                 const values = dataset.data.map(point => point.y || point);
                 const max = Math.max(...values).toFixed(1);
                 const min = Math.min(...values).toFixed(1);
-                const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
                 
                 html += `
                     <div class="stat-card">
