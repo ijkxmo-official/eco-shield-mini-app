@@ -787,13 +787,9 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'http://192.168.0.109:5000';
+        const API_BASE_URL = 'https://1faa058caec4c58a398d57f9d309a8ce.serveo.net';
         
-        const BACKUP_SERVERS = [
-            'https://192.168.0.109:5000',
-            'http://0.0.0.0:5000',
-            'https://0.0.0.0:5000'
-        ];
+        const BACKUP_SERVERS = [];
 
         let currentDeviceToken = null;
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
