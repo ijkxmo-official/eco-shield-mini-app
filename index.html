@@ -744,19 +744,15 @@
         let lastKnownData = JSON.parse(localStorage.getItem('lastKnownData') || '{}');
         let fallbackMode = false;
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-        if (tg && tg.initData) {
-            tg.expand();
-            try {
-                tg.MainButton.setText("Eco Shield");
-                tg.MainButton.show();
-            } catch(e) {}
-        }
+        let mainButtonAction = null;
+
         function showPopup(msg) {
             const el = document.getElementById('app-popup');
             el.textContent = msg;
             el.classList.add('show');
             setTimeout(()=>{ el.classList.remove('show'); }, 3000);
         }
+
         async function fetchWithTimeout(url, config={}, timeout=7000) {
             const controller = new AbortController();
             const id = setTimeout(()=>controller.abort(), timeout);
@@ -769,6 +765,7 @@
                 throw err;
             }
         }
+
         async function makeRequest(endpoint, options={}) {
             const servers = [API_BASE_URL, ...BACKUP_SERVERS].filter(Boolean);
             let lastError = null;
@@ -801,7 +798,9 @@
             fallbackMode = true;
             return localMockRequest(endpoint, options);
         }
+
         function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
         function localMockRequest(endpoint, options={}) {
             const method = (options.method || 'GET').toUpperCase();
             if (endpoint.startsWith('/auth') && method === 'POST') {
@@ -853,6 +852,7 @@
             }
             return Promise.reject(new Error('Endpoint не поддерживается в локальном режиме'));
         }
+
         async function loadCurrentData() {
             const content = document.getElementById('current-data-content');
             content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные...</div></div>';
@@ -861,6 +861,7 @@
             document.getElementById('current-soil').textContent = '--%';
             if (!currentDeviceToken) {
                 content.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!<br><br><button class="btn" onclick="showSection(\\'add-device\\')" style="margin-top: 10px;">➕ Добавить устройство</button></div>';
+                setMainButton(null);
                 return;
             }
             try {
@@ -873,10 +874,13 @@
                 if (!lastKnownData) lastKnownData = {};
                 lastKnownData[currentDeviceToken] = data;
                 localStorage.setItem('lastKnownData', JSON.stringify(lastKnownData));
+                setMainButton('refresh','Обновить');
             } catch (error) {
                 content.innerHTML = '<div class="alert alert-error">❌ '+(error.message||'Ошибка')+'<br><br><button class="btn" onclick="loadCurrentData()" style="margin-top: 10px;">🔄 Повторить попытку</button></div>';
+                setMainButton('refresh','Повторить');
             }
         }
+
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
             const el = document.getElementById(sectionId);
@@ -887,23 +891,31 @@
                 case 'notifications': loadNotifications(); break;
                 case 'all-presets': loadAllPresets(); break;
                 case 'my-presets': loadMyPresets(); break;
+                case 'add-device': setMainButton('addDevice','Добавить устройство'); break;
+                case 'ai-help': setMainButton('askAI','Спросить AI'); break;
+                case 'devices': setMainButton('addDevice','Добавить'); break;
+                default: setMainButton(null); break;
             }
         }
+
         function loadDevices() {
             const list = document.getElementById('devices-list');
-            const devices = JSON.parse(localStorage.getItem('userDevices') || '{}');
-            if (Object.keys(devices).length === 0) {
+            userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
+            if (Object.keys(userDevices).length === 0) {
                 list.innerHTML = '<div class="empty-state"><div class="empty-icon">📱</div><div>У вас пока нет добавленных устройств</div><div style="font-size: 14px; margin-top: 8px;">Добавьте первое устройство для начала работы</div></div>';
+                setMainButton('addDevice','Добавить устройство');
                 return;
             }
             let html = '<div class="device-list">';
-            for (const [name, token] of Object.entries(devices)) {
+            for (const [name, token] of Object.entries(userDevices)) {
                 const isActive = name === activeDevice;
                 html += '<div class="device-item"><div class="device-info"><div class="device-icon">'+(isActive?'✅':'📱')+'</div><div class="device-details"><div class="device-name '+(isActive?'device-active':'')+'">'+name+'</div><div class="device-status">'+(isActive?'Активное устройство':'Неактивно')+'</div></div></div><div class="device-actions">'+(isActive?'':('<button class="icon-btn" onclick="setActiveDevice(\\''+name+'\\')">✅</button>'))+'<button class="icon-btn delete-btn" onclick="deleteDevice(\\''+name+'\\')">🗑️</button></div></div>';
             }
             html += '</div>';
             list.innerHTML = html;
+            setMainButton('addDevice','Добавить');
         }
+
         function setActiveDevice(deviceName) {
             localStorage.setItem('activeDevice', deviceName);
             activeDevice = deviceName;
@@ -911,7 +923,9 @@
             loadDevices();
             showNotification('✅ Активное устройство: '+deviceName);
             loadCurrentData();
+            telegramSetContext({ action: 'setActiveDevice', device: deviceName });
         }
+
         function deleteDevice(deviceName) {
             if (!confirm('Удалить устройство "'+deviceName+'"?')) return;
             delete userDevices[deviceName];
@@ -927,7 +941,9 @@
             }
             loadDevices();
             showNotification('🗑️ Устройство "'+deviceName+'" удалено');
+            telegramSetContext({ action: 'deleteDevice', device: deviceName });
         }
+
         async function addDevice() {
             const code = document.getElementById('device-code').value.trim();
             const name = document.getElementById('device-name').value.trim();
@@ -949,21 +965,25 @@
                 document.getElementById('device-code').value = '';
                 document.getElementById('device-name').value = '';
                 setTimeout(()=>showSection('main-menu'), 1200);
+                telegramSetContext({ action: 'addDevice', name: name });
             } catch (error) {
                 resultDiv.innerHTML = '<div class="alert alert-error">❌ '+(error.message||'Ошибка')+'</div>';
             }
         }
+
         async function loadNotifications() {
             const list = document.getElementById('notifications-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем уведомления...</div></div>';
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                setMainButton('addDevice','Добавить');
                 return;
             }
             try {
                 const notifications = await makeRequest('/notifications', { headers: { 'Authorization': 'Bearer '+currentDeviceToken } });
                 if (!notifications || notifications.length === 0) {
                     list.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><div>У вас пока нет уведомлений</div></div>';
+                    setMainButton(null);
                     return;
                 }
                 let html = '';
@@ -975,21 +995,26 @@
                     html += '<div class="notification-item"><div class="notification-header"><div class="notification-title">'+typeName+'</div><div class="notification-status">АКТИВНО</div></div><div class="notification-details">'+bounds.join(' • ')+'</div></div>';
                 });
                 list.innerHTML = html;
+                setMainButton(null);
             } catch (error) {
                 list.innerHTML = '<div class="alert alert-error">❌ '+(error.message||'Ошибка')+'</div>';
+                setMainButton('refresh','Повторить');
             }
         }
+
         async function loadAllPresets() {
             const list = document.getElementById('all-presets-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем пресеты...</div></div>';
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                setMainButton('addDevice','Добавить устройство');
                 return;
             }
             try {
                 const presets = await makeRequest('/presets', { headers: { 'Authorization': 'Bearer '+currentDeviceToken } });
                 if (!presets || presets.length === 0) {
                     list.innerHTML = '<div class="empty-state"><div class="empty-icon">🌿</div><div>Пресеты временно недоступны</div></div>';
+                    setMainButton(null);
                     return;
                 }
                 let html = '<div class="preset-grid">';
@@ -999,21 +1024,26 @@
                 });
                 html += '</div>';
                 list.innerHTML = html;
+                setMainButton(null);
             } catch (error) {
                 list.innerHTML = '<div class="alert alert-error">❌ '+(error.message||'Ошибка')+'</div>';
+                setMainButton('refresh','Повторить');
             }
         }
+
         async function loadMyPresets() {
             const list = document.getElementById('my-presets-list');
             list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем ваши пресеты...</div></div>';
             if (!currentDeviceToken) {
                 list.innerHTML = '<div class="alert alert-error">❌ Сначала добавьте и выберите устройство!</div>';
+                setMainButton('addDevice','Добавить устройство');
                 return;
             }
             try {
                 const presets = await makeRequest('/user/presets', { headers: { 'Authorization': 'Bearer '+currentDeviceToken } });
                 if (!presets || presets.length === 0) {
                     list.innerHTML = '<div class="empty-state"><div class="empty-icon">⚙️</div><div>У вас пока нет примененных пресетов</div></div>';
+                    setMainButton(null);
                     return;
                 }
                 let html = '<div class="preset-grid">';
@@ -1023,20 +1053,25 @@
                 });
                 html += '</div>';
                 list.innerHTML = html;
+                setMainButton(null);
             } catch (error) {
                 list.innerHTML = '<div class="alert alert-error">❌ '+(error.message||'Ошибка')+'</div>';
+                setMainButton('refresh','Повторить');
             }
         }
+
         async function applyPreset(presetId) {
             if (!currentDeviceToken) { showNotification('❌ Сначала добавьте устройство!'); return; }
             try {
                 await makeRequest('/presets/'+presetId+'/apply', { method: 'POST', headers: { 'Authorization': 'Bearer '+currentDeviceToken } });
                 showNotification('✅ Пресет применен!');
                 loadMyPresets();
+                telegramSetContext({ action: 'applyPreset', id: presetId });
             } catch (error) {
                 showNotification('❌ Ошибка применения пресета');
             }
         }
+
         async function askAI() {
             const question = document.getElementById('ai-question').value.trim();
             const responseDiv = document.getElementById('ai-response');
@@ -1050,32 +1085,40 @@
                 const data = await makeRequest('/ai-request', { method: 'POST', headers: { 'Authorization': 'Bearer '+currentDeviceToken }, body: JSON.stringify({ prompt: question }) });
                 questionDisplay.textContent = question;
                 answerDisplay.innerHTML = (data.response || 'Нет ответа').replace(/\n/g,'<br>');
+                telegramSetContext({ action: 'askAI', question: question });
             } catch (error) {
                 questionDisplay.textContent = question;
                 answerDisplay.innerHTML = '❌ Ошибка соединения с сервером';
             }
         }
+
         function changeGraphPeriod(period, el) {
             document.querySelectorAll('#graphs .tab-container:first-child .tab').forEach(tab => tab.classList.remove('active'));
             if (el) el.classList.add('active');
             const content = document.getElementById('graph-content');
             content.innerHTML = '<div class="graph-placeholder"><div>📊</div><div>Отображение за '+period+'</div></div>';
+            setMainButton(null);
         }
+
         function changeGraphType(type, el) {
             document.querySelectorAll('#graphs .tab-container:last-child .tab').forEach(tab => tab.classList.remove('active'));
             if (el) el.classList.add('active');
             const content = document.getElementById('graph-content');
             content.innerHTML = '<div class="graph-placeholder"><div>📊</div><div>Тип: '+type+'</div></div>';
+            setMainButton(null);
         }
+
         function checkNotifications() {
             if (!currentDeviceToken) { showNotification('❌ Сначала добавьте устройство!'); return; }
             showNotification('🔔 Проверяем уведомления...');
             loadNotifications();
         }
+
         function refreshData() {
             loadCurrentData();
             showNotification('✅ Данные обновлены');
         }
+
         function showNotification(message) {
             if (tg && typeof tg.showPopup === 'function') {
                 try { tg.showPopup({ title: 'Eco Shield', message: message, buttons: [{ type: 'ok' }] }); return; } catch(e){}
@@ -1083,6 +1126,72 @@
             showPopup(message);
             if (!tg) alert(message);
         }
+
+        function initTelegram() {
+            if (!tg) return;
+            try {
+                if (tg.BackButton && typeof tg.BackButton.show === 'function') tg.BackButton.show();
+            } catch(e){}
+            try {
+                if (tg.onEvent) tg.onEvent('themeChanged', (theme) => applyTelegramTheme(theme));
+            } catch(e){}
+            try {
+                if (tg.MainButton) {
+                    tg.MainButton.setText('');
+                    tg.MainButton.hide();
+                }
+            } catch(e){}
+            try {
+                if (typeof tg.onEvent === 'function') tg.onEvent('mainButtonClicked', () => performMainButtonAction());
+            } catch(e){}
+            try {
+                if (tg.MainButton && typeof tg.MainButton.onClick === 'function') tg.MainButton.onClick(() => performMainButtonAction());
+            } catch(e){}
+            try {
+                if (typeof tg.onEvent === 'function') tg.onEvent('backButtonClicked', () => showSection('main-menu'));
+            } catch(e){}
+        }
+
+        function applyTelegramTheme(theme) {
+            if (!theme) return;
+            try {
+                if (theme.bg_color) document.body.style.backgroundColor = theme.bg_color;
+            } catch(e){}
+        }
+
+        function setMainButton(action, text) {
+            mainButtonAction = action;
+            if (!tg || !tg.MainButton) return;
+            try {
+                if (!action) {
+                    tg.MainButton.hide();
+                    return;
+                }
+                tg.MainButton.setText(text || '');
+                tg.MainButton.show();
+            } catch(e){}
+        }
+
+        function performMainButtonAction() {
+            if (!mainButtonAction) return;
+            if (mainButtonAction === 'addDevice') addDevice();
+            else if (mainButtonAction === 'askAI') askAI();
+            else if (mainButtonAction === 'refresh') loadCurrentData();
+            else if (mainButtonAction === 'applyPreset') {}
+            else if (mainButtonAction === 'sendData') telegramSend({ status: 'ok' });
+        }
+
+        function telegramSend(data) {
+            if (!tg || typeof tg.sendData !== 'function') return;
+            try {
+                tg.sendData(JSON.stringify(data));
+            } catch(e){}
+        }
+
+        function telegramSetContext(ctx) {
+            telegramSend({ type: 'context', payload: ctx });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
             const activeDeviceName = localStorage.getItem('activeDevice');
@@ -1091,8 +1200,10 @@
                 activeDevice = activeDeviceName;
                 loadCurrentData();
             }
+            initTelegram();
             setInterval(()=>{ if (currentDeviceToken) loadCurrentData(); }, 30000);
         });
+
         window.showSection = showSection;
         window.checkNotifications = checkNotifications;
         window.refreshData = refreshData;
