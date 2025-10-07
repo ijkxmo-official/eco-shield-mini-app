@@ -662,6 +662,20 @@
         .menu-card-wrapper {
             position: relative;
         }
+
+        .device-code-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .valid-codes-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -928,6 +942,7 @@
                 <div class="form-group">
                     <label class="form-label">Код устройства (12 символов):</label>
                     <input type="text" class="form-input" id="device-code" maxlength="12" placeholder="Введите 12-значный код">
+                    <div class="device-code-hint">Доступные коды: ECO123456789, ECO987654321, ECO111222333, ECO444555666, ECO777888999</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Название устройства:</label>
@@ -944,7 +959,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://e890e435c4e1e9e02520dd73e1f3381d.serveo.net';
+        const API_BASE_URL = 'https://703053891ffd2e5f5f08343d49851bf6.serveo.net';
         
         let currentDeviceToken = null;
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
@@ -983,7 +998,8 @@
                 const response = await fetch(url, config);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ошибка! статус: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ошибка! статус: ${response.status}, сообщение: ${errorText}`);
                 }
                 
                 const data = await response.json();
@@ -1319,7 +1335,12 @@
                 setTimeout(() => showSection('main-menu'), 2000);
                 
             } catch (error) {
-                resultDiv.innerHTML = `<div class="alert alert-error">❌ ${error.message}</div>`;
+                resultDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ ${error.message}
+                        <div style="font-size: 13px; margin-top: 8px;">Проверьте правильность кода устройства</div>
+                    </div>
+                `;
             }
         }
 
@@ -1601,13 +1622,6 @@
             loadGraphData(period);
         }
 
-        function changeGraphType(type, element) {
-            const container = element.parentElement;
-            const tabs = container.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-            element.classList.add('active');
-        }
-
         function checkNotifications() {
             if (!currentDeviceToken) {
                 showNotification('❌ Сначала добавьте устройство!');
@@ -1662,7 +1676,6 @@
         window.applyPreset = applyPreset;
         window.askAI = askAI;
         window.changeGraphPeriod = changeGraphPeriod;
-        window.changeGraphType = changeGraphType;
         window.loadCurrentData = loadCurrentData;
         window.changePresetPage = changePresetPage;
     </script>
