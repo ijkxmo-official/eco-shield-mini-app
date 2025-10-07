@@ -834,7 +834,9 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://bitter-boxes-guess.loca.lt';
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:8000' 
+            : 'https://giant-nails-poke.loca.lt';
         
         let currentDeviceToken = localStorage.getItem('currentDeviceToken');
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
@@ -1396,4 +1398,3 @@
     </script>
 </body>
 </html>
-
