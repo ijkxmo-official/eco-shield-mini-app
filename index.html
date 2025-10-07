@@ -1067,6 +1067,7 @@
 
                 userDevices[name] = authData.access_token;
                 localStorage.setItem('userDevices', JSON.stringify(userDevices));
+                localStorage.setItem('currentDeviceToken', authData.access_token);
                 
                 if (!activeDevice) {
                     setActiveDevice(name);
@@ -1120,10 +1121,6 @@
                         "system": "⚙️ Система"
                     }[notify.notification_type] || notify.notification_type;
                     
-                    const bounds = [];
-                    if (notify.min_value !== null) bounds.push(`мин: ${notify.min_value}`);
-                    if (notify.max_value !== null) bounds.push(`макс: ${notify.max_value}`);
-                    
                     html += `
                         <div class="notification-item">
                             <div class="notification-header">
@@ -1131,7 +1128,6 @@
                                 <div class="notification-status">${notify.is_read ? 'ПРОЧИТАНО' : 'НОВОЕ'}</div>
                             </div>
                             <div class="notification-details">${notify.message}</div>
-                            ${bounds.length > 0 ? `<div style="font-size: 12px; color: #666; margin-top: 8px;">${bounds.join(' • ')}</div>` : ''}
                             <div style="font-size: 11px; color: #999; margin-top: 8px;">${new Date(notify.created_at).toLocaleString()}</div>
                         </div>
                     `;
