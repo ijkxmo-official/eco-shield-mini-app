@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eco Shield - Мониторинг растений</title>
+    <title>Eco Shield - Умный мониторинг растений</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
@@ -511,6 +511,7 @@
         .ai-answer {
             line-height: 1.6;
             font-size: 14px;
+            white-space: pre-line;
         }
 
         .empty-state {
@@ -608,6 +609,59 @@
             font-weight: 600;
             color: var(--text-dark);
         }
+
+        .battery-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .battery-level {
+            width: 40px;
+            height: 20px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .battery-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .battery-tip {
+            width: 3px;
+            height: 8px;
+            background: #333;
+            position: absolute;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+
+        .menu-card-wrapper {
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -629,50 +683,67 @@
                 </div>
                 <div class="status-card">
                     <div class="status-value" id="current-soil">--%</div>
-                    <div class="status-label">ВЛАЖНОСТЬ ПОЧВЫ</div>
+                    <div class="status-label">ПОЧВА</div>
                 </div>
             </div>
 
             <div class="grid-menu">
-                <div class="menu-card" onclick="showSection('current-data')">
-                    <div class="menu-icon">🌡️</div>
-                    <div class="menu-text">Текущие данные</div>
-                    <div class="menu-description">Актуальные показания</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('current-data')">
+                        <div class="menu-icon">🌡️</div>
+                        <div class="menu-text">Текущие данные</div>
+                        <div class="menu-description">Актуальные показания</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('graphs')">
-                    <div class="menu-icon">📈</div>
-                    <div class="menu-text">Аналитика</div>
-                    <div class="menu-description">Графики и тренды</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('graphs')">
+                        <div class="menu-icon">📈</div>
+                        <div class="menu-text">Аналитика</div>
+                        <div class="menu-description">Графики и тренды</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('devices')">
-                    <div class="menu-icon">📱</div>
-                    <div class="menu-text">Устройства</div>
-                    <div class="menu-description">Управление датчиками</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('devices')">
+                        <div class="menu-icon">📱</div>
+                        <div class="menu-text">Устройства</div>
+                        <div class="menu-description">Управление датчиками</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('notifications')">
-                    <div class="menu-icon">🔔</div>
-                    <div class="menu-text">Уведомления</div>
-                    <div class="menu-description">Оповещения и алерты</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('notifications')">
+                        <div class="menu-icon">🔔</div>
+                        <div class="menu-text">Уведомления</div>
+                        <div class="menu-description">Оповещения и алерты</div>
+                        <div id="notification-badge" class="notification-badge" style="display: none;">0</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('all-presets')">
-                    <div class="menu-icon">🌿</div>
-                    <div class="menu-text">Пресеты растений</div>
-                    <div class="menu-description">Готовые настройки</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('all-presets')">
+                        <div class="menu-icon">🌿</div>
+                        <div class="menu-text">Пресеты растений</div>
+                        <div class="menu-description">Готовые настройки</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('my-presets')">
-                    <div class="menu-icon">⚙️</div>
-                    <div class="menu-text">Мои пресеты</div>
-                    <div class="menu-description">Активные конфигурации</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('my-presets')">
+                        <div class="menu-icon">⚙️</div>
+                        <div class="menu-text">Мои пресеты</div>
+                        <div class="menu-description">Активные конфигурации</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('ai-help')">
-                    <div class="menu-icon">🤖</div>
-                    <div class="menu-text">AI Помощник</div>
-                    <div class="menu-description">Советы по уходу</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('ai-help')">
+                        <div class="menu-icon">🤖</div>
+                        <div class="menu-text">AI Помощник</div>
+                        <div class="menu-description">Экспертные советы</div>
+                    </div>
                 </div>
-                <div class="menu-card" onclick="showSection('add-device')">
-                    <div class="menu-icon">➕</div>
-                    <div class="menu-text">Добавить устройство</div>
-                    <div class="menu-description">Подключить новый датчик</div>
+                <div class="menu-card-wrapper">
+                    <div class="menu-card" onclick="showSection('add-device')">
+                        <div class="menu-icon">➕</div>
+                        <div class="menu-text">Добавить устройство</div>
+                        <div class="menu-description">Подключить датчик</div>
+                    </div>
                 </div>
             </div>
 
@@ -723,18 +794,11 @@
                 <div class="tab" onclick="changeGraphPeriod('30d', this)">30 дней</div>
             </div>
 
-            <div class="tab-container">
-                <div class="tab active" onclick="changeGraphType('temperature', this)">🌡 Температура</div>
-                <div class="tab" onclick="changeGraphType('humidity', this)">💧 Влажность</div>
-                <div class="tab" onclick="changeGraphType('soil', this)">🌱 Почва</div>
-                <div class="tab" onclick="changeGraphType('all', this)">📊 Все данные</div>
-            </div>
-
             <div class="graph-container">
                 <div id="graph-content">
                     <div class="graph-placeholder">
                         <div>📊</div>
-                        <div>Выберите период и тип данных</div>
+                        <div>Загружаем данные для построения графиков...</div>
                     </div>
                 </div>
             </div>
@@ -837,11 +901,11 @@
             <div class="card">
                 <div class="form-group">
                     <label class="form-label">Задайте вопрос о растениях:</label>
-                    <textarea class="form-input" id="ai-question" rows="4" placeholder="Например: Как правильно поливать орхидею зимой?"></textarea>
+                    <textarea class="form-input" id="ai-question" rows="4" placeholder="Например: Как правильно поливать орхидею зимой? У моего лимона желтеют листья с прожилками, что делать?"></textarea>
                 </div>
                 <button class="btn" onclick="askAI()">
                     <span>📤</span>
-                    <span>Получить совет</span>
+                    <span>Получить экспертный совет</span>
                 </button>
                 
                 <div id="ai-response" class="ai-response-container">
@@ -867,7 +931,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Название устройства:</label>
-                    <input type="text" class="form-input" id="device-name" placeholder="Например: Гостиная, Кухня">
+                    <input type="text" class="form-input" id="device-name" placeholder="Например: Гостиная, Кухня, Балкон">
                 </div>
                 <button class="btn" onclick="addDevice()">
                     <span>✅</span>
@@ -886,7 +950,8 @@
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
         let activeDevice = localStorage.getItem('activeDevice');
         let currentPresetPage = 1;
-        const presetsPerPage = 3;
+        const presetsPerPage = 5;
+        let unreadNotifications = 0;
 
         let tg = window.Telegram.WebApp;
         if (tg && tg.initData) {
@@ -952,12 +1017,26 @@
 
             try {
                 const data = await makeRequest('/sensor-data/current');
-                const activeDeviceName = localStorage.getItem('activeDevice');
+                const deviceInfo = await makeRequest('/device/info');
+                
+                const batteryHtml = data.battery_level ? `
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin: 16px 0;">
+                        <div class="battery-indicator">
+                            <div class="battery-level">
+                                <div class="battery-fill" style="width: ${data.battery_level}%"></div>
+                                <div class="battery-tip"></div>
+                            </div>
+                            <span>${data.battery_level}%</span>
+                        </div>
+                        <div style="font-size: 14px; color: #666;">Уровень заряда</div>
+                    </div>
+                ` : '';
                 
                 content.innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <div style="font-size: 14px; color: #666; margin-bottom: 8px;">АКТИВНОЕ УСТРОЙСТВО</div>
-                        <div style="font-size: 18px; font-weight: 800; color: var(--primary-color);">${activeDeviceName}</div>
+                        <div style="font-size: 18px; font-weight: 800; color: var(--primary-color);">${deviceInfo.device.name}</div>
+                        <div style="font-size: 13px; color: #888; margin-top: 4px;">ID: ${deviceInfo.device.product_code}</div>
                     </div>
                     <div class="status-cards">
                         <div class="status-card">
@@ -973,6 +1052,7 @@
                             <div class="status-label">ВЛАЖНОСТЬ ПОЧВЫ</div>
                         </div>
                     </div>
+                    ${batteryHtml}
                     <div style="text-align: center; margin-top: 16px; color: #666; font-size: 13px; font-weight: 600;">
                         📅 Обновлено: ${new Date().toLocaleTimeString()}
                     </div>
@@ -995,6 +1075,109 @@
             }
         }
 
+        async function loadGraphData(period) {
+            const content = document.getElementById('graph-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div><div>Загружаем данные для графиков...</div></div>';
+
+            try {
+                const hours = period === '24h' ? 24 : period === '7d' ? 168 : 720;
+                const data = await makeRequest(`/sensor-data/history?hours=${hours}`);
+                
+                if (data.timestamps.length === 0) {
+                    content.innerHTML = `
+                        <div class="graph-placeholder">
+                            <div>📊</div>
+                            <div>Нет данных за выбранный период</div>
+                            <div style="font-size: 13px; margin-top: 8px;">Данные появятся после подключения устройства</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: var(--text-dark); margin-bottom: 16px;">📈 Данные за ${period === '24h' ? '24 часа' : period === '7d' ? '7 дней' : '30 дней'}</h3>
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                `;
+
+                if (data.temperature && data.temperature.length > 0) {
+                    const maxTemp = Math.max(...data.temperature);
+                    const minTemp = Math.min(...data.temperature);
+                    const avgTemp = (data.temperature.reduce((a, b) => a + b, 0) / data.temperature.length).toFixed(1);
+                    
+                    html += `
+                        <div style="background: #f8f9fa; padding: 16px; border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-weight: 700; color: var(--text-dark);">🌡 Температура</span>
+                                <span style="font-size: 13px; color: #666;">Макс: ${maxTemp}°C, Мин: ${minTemp}°C, Сред: ${avgTemp}°C</span>
+                            </div>
+                            <div style="height: 100px; background: white; border-radius: 8px; padding: 8px; border: 1px solid #e9ecef;">
+                                <div style="display: flex; align-items: end; height: 100%; gap: 2px;">
+                                    ${data.temperature.map((temp, index) => `
+                                        <div style="flex: 1; background: linear-gradient(to top, #ff6b6b, #ffa8a8); height: ${(temp / maxTemp) * 80}%; border-radius: 2px;" title="${data.timestamps[index]}: ${temp}°C"></div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (data.humidity && data.humidity.length > 0) {
+                    const maxHum = Math.max(...data.humidity);
+                    const minHum = Math.min(...data.humidity);
+                    const avgHum = (data.humidity.reduce((a, b) => a + b, 0) / data.humidity.length).toFixed(1);
+                    
+                    html += `
+                        <div style="background: #f8f9fa; padding: 16px; border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-weight: 700; color: var(--text-dark);">💧 Влажность</span>
+                                <span style="font-size: 13px; color: #666;">Макс: ${maxHum}%, Мин: ${minHum}%, Сред: ${avgHum}%</span>
+                            </div>
+                            <div style="height: 100px; background: white; border-radius: 8px; padding: 8px; border: 1px solid #e9ecef;">
+                                <div style="display: flex; align-items: end; height: 100%; gap: 2px;">
+                                    ${data.humidity.map((hum, index) => `
+                                        <div style="flex: 1; background: linear-gradient(to top, #4dabf7, #74c0fc); height: ${(hum / maxHum) * 80}%; border-radius: 2px;" title="${data.timestamps[index]}: ${hum}%"></div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (data.soil_moisture && data.soil_moisture.length > 0) {
+                    const maxSoil = Math.max(...data.soil_moisture);
+                    const minSoil = Math.min(...data.soil_moisture);
+                    const avgSoil = (data.soil_moisture.reduce((a, b) => a + b, 0) / data.soil_moisture.length).toFixed(1);
+                    
+                    html += `
+                        <div style="background: #f8f9fa; padding: 16px; border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-weight: 700; color: var(--text-dark);">🌱 Влажность почвы</span>
+                                <span style="font-size: 13px; color: #666;">Макс: ${maxSoil}%, Мин: ${minSoil}%, Сред: ${avgSoil}%</span>
+                            </div>
+                            <div style="height: 100px; background: white; border-radius: 8px; padding: 8px; border: 1px solid #e9ecef;">
+                                <div style="display: flex; align-items: end; height: 100%; gap: 2px;">
+                                    ${data.soil_moisture.map((soil, index) => `
+                                        <div style="flex: 1; background: linear-gradient(to top, #40c057, #69db7c); height: ${(soil / maxSoil) * 80}%; border-radius: 2px;" title="${data.timestamps[index]}: ${soil}%"></div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `</div></div>`;
+                content.innerHTML = html;
+                
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Ошибка загрузки данных для графиков: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
@@ -1004,6 +1187,9 @@
             switch(sectionId) {
                 case 'current-data':
                     loadCurrentData();
+                    break;
+                case 'graphs':
+                    loadGraphData('24h');
                     break;
                 case 'devices':
                     loadDevices();
@@ -1030,6 +1216,9 @@
                         <div class="empty-icon">📱</div>
                         <div>У вас пока нет добавленных устройств</div>
                         <div style="font-size: 13px; margin-top: 8px;">Добавьте первое устройство для начала работы</div>
+                        <button class="btn" onclick="showSection('add-device')" style="margin-top: 16px;">
+                            ➕ Добавить устройство
+                        </button>
                     </div>
                 `;
                 return;
@@ -1065,6 +1254,7 @@
             loadDevices();
             showNotification(`✅ Активное устройство: ${deviceName}`);
             loadCurrentData();
+            checkUnreadNotifications();
         }
 
         function deleteDevice(deviceName) {
@@ -1106,7 +1296,7 @@
             try {
                 const response = await makeRequest('/auth', {
                     method: 'POST',
-                    body: { product_code: code }
+                    body: { product_code: code, name: name }
                 });
 
                 userDevices[name] = response.access_token;
@@ -1119,6 +1309,7 @@
                 resultDiv.innerHTML = `
                     <div class="alert alert-success">
                         ✅ Устройство "${name}" успешно добавлено!
+                        <div style="font-size: 13px; margin-top: 8px;">Токен: ${response.access_token}</div>
                     </div>
                 `;
 
@@ -1142,13 +1333,15 @@
             }
 
             try {
-                const notifications = await makeRequest('/notifications');
+                const response = await makeRequest('/notifications');
+                const notifications = response.notifications;
 
                 if (!notifications || notifications.length === 0) {
                     list.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-icon">🔔</div>
                             <div>У вас пока нет уведомлений</div>
+                            <div style="font-size: 13px; margin-top: 8px;">Уведомления появятся при отклонении параметров</div>
                         </div>
                     `;
                     return;
@@ -1156,30 +1349,55 @@
 
                 let html = '';
                 notifications.forEach(notify => {
-                    const typeName = {
-                        "temperature": "🌡 Температура",
-                        "humidity": "💧 Влажность воздуха",
-                        "soil_moisture": "🌱 Влажность почвы"
-                    }[notify.notification_type] || notify.notification_type;
-                    
-                    const bounds = [];
-                    if (notify.min_value !== null) bounds.push(`мин: ${notify.min_value}`);
-                    if (notify.max_value !== null) bounds.push(`макс: ${notify.max_value}`);
+                    const typeIcons = {
+                        "temperature": "🌡",
+                        "humidity": "💧", 
+                        "soil_moisture": "🌱",
+                        "battery": "🔋",
+                        "system": "⚙️"
+                    };
                     
                     html += `
-                        <div class="notification-item">
+                        <div class="notification-item" style="border-left-color: ${notify.is_read ? '#6c757d' : 'var(--primary-color)'}; opacity: ${notify.is_read ? 0.7 : 1}">
                             <div class="notification-header">
-                                <div class="notification-title">${typeName}</div>
-                                <div class="notification-status">АКТИВНО</div>
+                                <div class="notification-title">
+                                    <span>${typeIcons[notify.notification_type] || '🔔'}</span>
+                                    <span>${notify.message}</span>
+                                </div>
+                                <div class="notification-status" style="background: ${notify.is_read ? '#6c757d' : 'var(--primary-color)'}">
+                                    ${notify.is_read ? 'ПРОЧИТАНО' : 'НОВОЕ'}
+                                </div>
                             </div>
-                            <div class="notification-details">${bounds.join(' • ')}</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                                📅 ${new Date(notify.created_at).toLocaleString()}
+                            </div>
                         </div>
                     `;
                 });
                 
                 list.innerHTML = html;
+                
             } catch (error) {
                 list.innerHTML = `<div class="alert alert-error">❌ ${error.message}</div>`;
+            }
+        }
+
+        async function checkUnreadNotifications() {
+            if (!currentDeviceToken) return;
+            
+            try {
+                const response = await makeRequest('/notifications/unread/count');
+                unreadNotifications = response.unread_count;
+                
+                const badge = document.getElementById('notification-badge');
+                if (unreadNotifications > 0) {
+                    badge.textContent = unreadNotifications > 99 ? '99+' : unreadNotifications;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error checking unread notifications:', error);
             }
         }
 
@@ -1213,12 +1431,13 @@
                     };
                     
                     html += `
-                        <div class="preset-item" onclick="applyPreset('${preset.id}')">
+                        <div class="preset-item" onclick="applyPreset(${preset.id})">
                             <div class="preset-header">
                                 <div>
                                     <div class="preset-name">${preset.name}</div>
+                                    <div style="font-size: 12px; color: #666; margin-top: 2px;">${preset.category}</div>
                                 </div>
-                                <div class="preset-category">${categoryIcons[preset.category] || '🌱'} ${preset.category}</div>
+                                <div class="preset-category">${categoryIcons[preset.category] || '🌱'}</div>
                             </div>
                             <div class="preset-params">
                                 <div class="param-item">
@@ -1251,14 +1470,7 @@
         }
 
         function changePresetPage(direction) {
-            const presets = JSON.parse(localStorage.getItem('allPresets') || '[]');
-            const totalPages = Math.ceil(presets.length / presetsPerPage);
-            
             currentPresetPage += direction;
-            
-            if (currentPresetPage < 1) currentPresetPage = 1;
-            if (currentPresetPage > totalPages) currentPresetPage = totalPages;
-            
             loadAllPresets();
         }
 
@@ -1279,6 +1491,10 @@
                         <div class="empty-state">
                             <div class="empty-icon">⚙️</div>
                             <div>У вас пока нет примененных пресетов</div>
+                            <div style="font-size: 13px; margin-top: 8px;">Выберите пресет из каталога и примените его</div>
+                            <button class="btn" onclick="showSection('all-presets')" style="margin-top: 16px;">
+                                🌿 Выбрать пресет
+                            </button>
                         </div>
                     `;
                     return;
@@ -1296,8 +1512,9 @@
                             <div class="preset-header">
                                 <div>
                                     <div class="preset-name">${preset.name}</div>
+                                    <div style="font-size: 12px; color: #666; margin-top: 2px;">Устройство: ${preset.device_name}</div>
                                 </div>
-                                <div class="preset-category">${categoryIcons[preset.category] || '🌱'} ${preset.category}</div>
+                                <div class="preset-category">${categoryIcons[preset.category] || '🌱'} АКТИВНО</div>
                             </div>
                             <div class="preset-params">
                                 <div class="param-item">
@@ -1332,8 +1549,9 @@
 
             try {
                 await makeRequest(`/presets/${presetId}/apply`, { method: 'POST' });
-                showNotification('✅ Пресет применен!');
+                showNotification('✅ Пресет успешно применен!');
                 loadMyPresets();
+                setTimeout(() => showSection('my-presets'), 1000);
             } catch (error) {
                 showNotification('❌ Ошибка применения пресета');
             }
@@ -1366,6 +1584,9 @@
 
                 questionDisplay.textContent = question;
                 answerDisplay.innerHTML = response.response.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                document.getElementById('ai-question').value = '';
+                
             } catch (error) {
                 questionDisplay.textContent = question;
                 answerDisplay.innerHTML = '❌ Ошибка соединения с сервером. Пожалуйста, проверьте подключение к интернету и попробуйте снова.';
@@ -1377,6 +1598,7 @@
             const tabs = container.querySelectorAll('.tab');
             tabs.forEach(tab => tab.classList.remove('active'));
             element.classList.add('active');
+            loadGraphData(period);
         }
 
         function changeGraphType(type, element) {
@@ -1393,10 +1615,12 @@
             }
             showNotification('🔔 Проверяем уведомления...');
             loadNotifications();
+            checkUnreadNotifications();
         }
 
         function refreshData() {
             loadCurrentData();
+            checkUnreadNotifications();
             showNotification('✅ Данные обновлены');
         }
 
@@ -1418,9 +1642,15 @@
                 currentDeviceToken = userDevices[activeDeviceName];
                 activeDevice = activeDeviceName;
                 loadCurrentData();
+                checkUnreadNotifications();
             }
             
-            setInterval(loadCurrentData, 30000);
+            setInterval(() => {
+                if (currentDeviceToken) {
+                    loadCurrentData();
+                    checkUnreadNotifications();
+                }
+            }, 30000);
         });
 
         window.showSection = showSection;
