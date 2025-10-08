@@ -441,6 +441,12 @@
             gap: 12px;
         }
 
+        .graph-canvas {
+            width: 100%;
+            height: 280px;
+            border-radius: 12px;
+        }
+
         .ai-response-container {
             background: var(--card-bg);
             border-radius: var(--border-radius);
@@ -685,12 +691,7 @@
             </div>
 
             <div class="graph-container">
-                <div id="graph-content">
-                    <div class="graph-placeholder">
-                        <div>📊</div>
-                        <div>Выберите период и тип данных</div>
-                    </div>
-                </div>
+                <canvas id="graph-canvas" class="graph-canvas"></canvas>
             </div>
         </div>
 
@@ -834,21 +835,15 @@
     </div>
 
     <script>
-        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://localhost:8000' 
-            : 'https://giant-nails-poke.loca.lt';
+        const API_BASE_URL = 'http://localhost:8000';
         
         let currentDeviceToken = localStorage.getItem('currentDeviceToken');
         let userDevices = JSON.parse(localStorage.getItem('userDevices') || '{}');
         let activeDevice = localStorage.getItem('activeDevice');
         let currentPresetPage = 1;
         const presetsPerPage = 3;
-
-        let tg = window.Telegram.WebApp;
-        if (tg && tg.initData) {
-            tg.expand();
-            tg.MainButton.setText("Eco Shield").show();
-        }
+        let currentGraphPeriod = '24h';
+        let currentGraphType = 'temperature';
 
         async function makeRequest(endpoint, options = {}) {
             const url = `${API_BASE_URL}${endpoint}`;
@@ -960,6 +955,9 @@
                 case 'current-data':
                     loadCurrentData();
                     break;
+                case 'graphs':
+                    loadGraphs();
+                    break;
                 case 'devices':
                     loadDevices();
                     break;
@@ -973,6 +971,131 @@
                     loadMyPresets();
                     break;
             }
+        }
+
+        async function loadGraphs() {
+            if (!currentDeviceToken) {
+                document.getElementById('graph-canvas').innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ Сначала добавьте и выберите устройство!
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const hoursMap = { '24h': 24, '7d': 168, '30d': 720 };
+                const hours = hoursMap[currentGraphPeriod];
+                const data = await makeRequest(`/sensor-data/history?hours=${hours}`);
+                
+                drawGraph(data);
+            } catch (error) {
+                document.getElementById('graph-canvas').innerHTML = `
+                    <div class="alert alert-error">
+                        ❌ ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function drawGraph(data) {
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            if (!data.timestamps.length) {
+                ctx.fillStyle = '#6c757d';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Нет данных для отображения', width / 2, height / 2);
+                return;
+            }
+
+            const padding = 40;
+            const graphWidth = width - padding * 2;
+            const graphHeight = height - padding * 2;
+
+            const maxTemp = Math.max(...data.temperature);
+            const maxHumidity = Math.max(...data.humidity);
+            const maxSoil = Math.max(...data.soil_moisture);
+            const maxValue = Math.max(maxTemp, maxHumidity, maxSoil, 100);
+
+            ctx.strokeStyle = '#e9ecef';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (graphHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#6c757d';
+                ctx.font = '12px Arial';
+                ctx.fillText(Math.round(maxValue - (maxValue / 5) * i), padding - 25, y + 4);
+            }
+
+            function drawLine(values, color) {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                
+                for (let i = 0; i < values.length; i++) {
+                    const x = padding + (graphWidth / (values.length - 1)) * i;
+                    const y = padding + graphHeight - (values[i] / maxValue) * graphHeight;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            if (currentGraphType === 'temperature' || currentGraphType === 'all') {
+                drawLine(data.temperature, '#dc3545');
+            }
+            if (currentGraphType === 'humidity' || currentGraphType === 'all') {
+                drawLine(data.humidity, '#007bff');
+            }
+            if (currentGraphType === 'soil' || currentGraphType === 'all') {
+                drawLine(data.soil_moisture, '#28a745');
+            }
+
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Время', width / 2, height - 10);
+
+            ctx.save();
+            ctx.translate(10, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Значения', 0, 0);
+            ctx.restore();
+        }
+
+        function changeGraphPeriod(period, element) {
+            currentGraphPeriod = period;
+            const container = element.parentElement;
+            const tabs = container.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            element.classList.add('active');
+            loadGraphs();
+        }
+
+        function changeGraphType(type, element) {
+            currentGraphType = type;
+            const container = element.parentElement;
+            const tabs = container.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            element.classList.add('active');
+            loadGraphs();
         }
 
         function loadDevices() {
@@ -1332,20 +1455,6 @@
             }
         }
 
-        function changeGraphPeriod(period, element) {
-            const container = element.parentElement;
-            const tabs = container.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-            element.classList.add('active');
-        }
-
-        function changeGraphType(type, element) {
-            const container = element.parentElement;
-            const tabs = container.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-            element.classList.add('active');
-        }
-
         function checkNotifications() {
             if (!currentDeviceToken) {
                 showNotification('❌ Сначала добавьте устройство!');
@@ -1361,15 +1470,7 @@
         }
 
         function showNotification(message) {
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.showPopup({
-                    title: 'Eco Shield',
-                    message: message,
-                    buttons: [{ type: 'ok' }]
-                });
-            } else {
-                alert(message);
-            }
+            alert(message);
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1391,10 +1492,10 @@
         window.deleteDevice = deleteDevice;
         window.applyPreset = applyPreset;
         window.askAI = askAI;
-        window.changeGraphPeriod = changeGraphPeriod;
-        window.changeGraphType = changeGraphType;
         window.loadCurrentData = loadCurrentData;
         window.changePresetPage = changePresetPage;
+        window.changeGraphPeriod = changeGraphPeriod;
+        window.changeGraphType = changeGraphType;
     </script>
 </body>
 </html>
