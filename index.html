@@ -608,6 +608,16 @@
             opacity: 0.8;
             font-weight: 600;
         }
+
+        .ai-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+            border-left: 4px solid #ffc107;
+        }
     </style>
 </head>
 <body>
@@ -841,6 +851,9 @@
                 <div id="ai-response" class="ai-response-container">
                     <div class="ai-question" id="ai-question-display"></div>
                     <div class="ai-answer" id="ai-answer-display"></div>
+                    <div class="ai-warning">
+                        ⚠️ AI может ошибаться. Проверяйте все важные данные у профессиональных садоводов и/или в источниках.
+                    </div>
                 </div>
             </div>
         </div>
@@ -1070,6 +1083,8 @@
                 if (this.temperature > 0.3) {
                     response = this.addVariation(response, prompt);
                 }
+
+                response += "\n\n⚠️ AI может ошибаться. Проверяйте все важные данные у профессиональных садоводов.";
 
                 return response;
             }
